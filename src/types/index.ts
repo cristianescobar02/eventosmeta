@@ -38,13 +38,14 @@ export interface AuxAPU {
 
 export interface Project {
   id?: number
+  user_id?: string
   name: string
   client: string
   location: string
   department: string
   date: string
   description: string
-  createdAt: string
+  created_at?: string
 }
 
 export interface BudgetItem {
@@ -68,6 +69,7 @@ export interface AIU {
 export interface Budget {
   id?: number
   projectId: number
+  user_id?: string
   name: string
   items: BudgetItem[]
   aiu: AIU
@@ -83,3 +85,6 @@ export type NavPage =
   | 'activities'
   | 'projects'
   | 'import'
+  | 'pricing'
+  | 'materials'
+  | 'admin'

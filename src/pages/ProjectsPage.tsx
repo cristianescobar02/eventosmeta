@@ -1,35 +1,62 @@
 import { useEffect, useState } from 'react'
-import { Plus, FolderOpen, Trash2, FileText, ChevronRight } from 'lucide-react'
-import { db } from '../db/database'
+import { Plus, FolderOpen, Trash2, FileText, ChevronRight, Lock } from 'lucide-react'
+import { supabase, canCreateProject } from '../lib/supabase'
 import type { Project } from '../types'
 import BudgetEditor from './BudgetEditor'
+import { useAuth } from '../contexts/AuthContext'
+import type { NavPage } from '../types'
 
 type View = 'list' | 'create' | 'budget'
 
-export default function ProjectsPage() {
+interface Props {
+  onNavigate: (p: NavPage) => void
+}
+
+export default function ProjectsPage({ onNavigate }: Props) {
+  const { user, profile } = useAuth()
   const [view, setView] = useState<View>('list')
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [form, setForm] = useState<Omit<Project, 'id' | 'createdAt'>>({
-    name: '', client: '', location: '', department: '', date: '', description: '',
-  })
+  const [form, setForm] = useState({ name: '', client: '', location: '', department: '', date: '', description: '' })
   const [formError, setFormError] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadProjects() }, [])
+  const plan = profile?.plan ?? 'free'
+
+  useEffect(() => { loadProjects() }, [user])
 
   async function loadProjects() {
-    const all = await db.projects.orderBy('createdAt').reverse().toArray()
-    setProjects(all)
+    if (!user) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    setProjects((data as Project[]) ?? [])
+    setLoading(false)
   }
 
   async function createProject() {
+    if (!user) return
     if (!form.name.trim() || !form.client.trim()) {
       setFormError('El nombre del proyecto y el cliente son obligatorios.')
       return
     }
-    const project: Project = { ...form, createdAt: new Date().toISOString() }
-    const id = await db.projects.add(project) as number
-    const created = { ...project, id }
+    if (!canCreateProject(plan, projects.length)) {
+      setFormError('Tu plan gratuito solo permite 1 proyecto. Actualiza tu plan para crear más.')
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({ ...form, user_id: user.id })
+      .select()
+      .single()
+
+    if (error) { setFormError(error.message); return }
+
+    const created = data as Project
     setSelectedProject(created)
     setView('budget')
     setForm({ name: '', client: '', location: '', department: '', date: '', description: '' })
@@ -39,30 +66,23 @@ export default function ProjectsPage() {
 
   async function deleteProject(id: number) {
     if (!confirm('¿Eliminar este proyecto y todos sus presupuestos?')) return
-    await db.projects.delete(id)
-    await db.budgets.where('projectId').equals(id).delete()
+    await supabase.from('projects').delete().eq('id', id)
     loadProjects()
   }
 
+  const canCreate = canCreateProject(plan, projects.length)
+
   if (view === 'budget' && selectedProject) {
-    return (
-      <BudgetEditor
-        project={selectedProject}
-        onBack={() => { setView('list'); setSelectedProject(null) }}
-      />
-    )
+    return <BudgetEditor project={selectedProject} onBack={() => { setView('list'); loadProjects() }} onNavigate={onNavigate} />
   }
 
   if (view === 'create') {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView('list')} className="text-sm text-blue-600 hover:underline">
-            ← Volver
-          </button>
+          <button onClick={() => setView('list')} className="text-sm text-blue-600 hover:underline">← Volver</button>
           <h2 className="font-bold text-gray-800">Nuevo proyecto</h2>
         </div>
-
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Nombre del proyecto *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
@@ -73,25 +93,20 @@ export default function ProjectsPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Descripción / Objeto</label>
-            <textarea
-              rows={3}
-              value={form.description}
+            <textarea rows={3} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="Descripción del proyecto..."
             />
           </div>
-
           {formError && <p className="text-sm text-red-600">{formError}</p>}
-
           <div className="flex gap-3 pt-2">
-            <button
-              onClick={createProject}
-              className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-            >
+            <button onClick={createProject}
+              className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
               Crear proyecto y elaborar presupuesto →
             </button>
-            <button onClick={() => setView('list')} className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+            <button onClick={() => setView('list')}
+              className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
               Cancelar
             </button>
           </div>
@@ -104,23 +119,32 @@ export default function ProjectsPage() {
     <div className="max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-gray-800">Mis proyectos</h2>
-        <button
-          onClick={() => setView('create')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-        >
-          <Plus size={16} />
-          Nuevo proyecto
-        </button>
+        {canCreate ? (
+          <button onClick={() => setView('create')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+            <Plus size={16} />
+            Nuevo proyecto
+          </button>
+        ) : (
+          <button onClick={() => onNavigate('pricing')}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+            <Lock size={14} />
+            Actualizar plan para más proyectos
+          </button>
+        )}
       </div>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-gray-400">
+          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
+          Cargando...
+        </div>
+      ) : projects.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-16 text-center">
           <FolderOpen size={40} className="mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500 text-sm mb-4">No hay proyectos aún</p>
-          <button
-            onClick={() => setView('create')}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-          >
+          <button onClick={() => setView('create')}
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
             Crear primer proyecto
           </button>
         </div>
@@ -136,6 +160,15 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
+
+      {!canCreate && projects.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 text-center">
+          Plan gratuito: 1 proyecto máximo.{' '}
+          <button onClick={() => onNavigate('pricing')} className="font-semibold underline">
+            Actualiza tu plan →
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -144,7 +177,9 @@ function ProjectCard({ project, onOpen, onDelete }: { project: Project; onOpen: 
   const [budgetCount, setBudgetCount] = useState(0)
 
   useEffect(() => {
-    db.budgets.where('projectId').equals(project.id!).count().then(setBudgetCount)
+    if (!project.id) return
+    supabase.from('budgets').select('id', { count: 'exact', head: true }).eq('project_id', project.id)
+      .then(({ count }) => setBudgetCount(count ?? 0))
   }, [project.id])
 
   return (
@@ -155,26 +190,21 @@ function ProjectCard({ project, onOpen, onDelete }: { project: Project; onOpen: 
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-gray-800">{project.name}</p>
         <p className="text-xs text-gray-500 mt-0.5">
-          {project.client} · {project.location}{project.department ? `, ${project.department}` : ''}
+          {project.client}{project.location ? ` · ${project.location}` : ''}{project.department ? `, ${project.department}` : ''}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
           {budgetCount} presupuesto{budgetCount !== 1 ? 's' : ''} ·{' '}
-          {new Date(project.createdAt).toLocaleDateString('es-CO')}
+          {project.created_at ? new Date(project.created_at).toLocaleDateString('es-CO') : ''}
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          onClick={onOpen}
-          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
-        >
+        <button onClick={onOpen}
+          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700">
           <FileText size={13} />
           Presupuesto
           <ChevronRight size={13} />
         </button>
-        <button
-          onClick={onDelete}
-          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-        >
+        <button onClick={onDelete} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
           <Trash2 size={15} />
         </button>
       </div>
@@ -188,12 +218,8 @@ function Field({ label, value, onChange, type = 'text' }: {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+      <input type={type} value={value} onChange={e => onChange(e.target.value)}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
     </div>
   )
 }

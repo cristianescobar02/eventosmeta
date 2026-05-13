@@ -16,7 +16,7 @@ export function exportBudgetPDF(budget: Budget, project: Project) {
   doc.text(`Proyecto: ${project.name}`, 15, 25)
   doc.text(`Cliente: ${project.client}`, 15, 30)
   doc.text(`Ubicación: ${project.location}, ${project.department}`, 15, 35)
-  doc.text(`Fecha: ${new Date(project.date).toLocaleDateString('es-CO')}`, 15, 40)
+  doc.text(`Fecha: ${project.date ? new Date(project.date).toLocaleDateString('es-CO') : ''}`, 15, 40)
   doc.text(`Elaboró: ${budget.name}`, 150, 25)
 
   const chapters = groupByChapter(budget.items)
