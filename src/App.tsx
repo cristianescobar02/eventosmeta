@@ -8,6 +8,7 @@ import ProjectsPage from './pages/ProjectsPage'
 import PricingPage from './pages/PricingPage'
 import MaterialsPage from './pages/MaterialsPage'
 import AdminPage from './pages/AdminPage'
+import WhatsAppPage from './pages/WhatsAppPage'
 import type { NavPage } from './types'
 
 function AppContent() {
@@ -32,6 +33,7 @@ function AppContent() {
       {page === 'pricing'    && <PricingPage />}
       {page === 'materials'  && <MaterialsPage onNavigate={setPage} />}
       {page === 'admin'      && <AdminPage />}
+      {page === 'whatsapp'   && <WhatsAppPage />}
     </Layout>
   )
 }
