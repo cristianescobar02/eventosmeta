@@ -88,3 +88,4 @@ export type NavPage =
   | 'pricing'
   | 'materials'
   | 'admin'
+  | 'whatsapp'

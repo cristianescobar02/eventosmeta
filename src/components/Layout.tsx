@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   LayoutDashboard, ListChecks, FolderOpen, CreditCard,
-  Menu, X, HardHat, LogOut, ChevronDown, Shield, Package,
+  Menu, X, HardHat, LogOut, ChevronDown, Shield, Package, MessageCircle,
 } from 'lucide-react'
 import type { NavPage } from '../types'
 import { useAuth } from '../contexts/AuthContext'
@@ -40,7 +40,11 @@ export default function Layout({ current, onChange, children }: Props) {
   }
 
   const allNavItems = isAdmin
-    ? [...navItems, { id: 'admin' as NavPage, label: 'Admin', icon: Shield }]
+    ? [
+        ...navItems,
+        { id: 'admin' as NavPage, label: 'Admin', icon: Shield },
+        { id: 'whatsapp' as NavPage, label: 'WhatsApp', icon: MessageCircle },
+      ]
     : navItems
 
   return (
@@ -85,6 +89,7 @@ export default function Layout({ current, onChange, children }: Props) {
                 {item.label}
                 {locked && <span className="ml-auto text-xs bg-indigo-600 text-indigo-200 px-1.5 py-0.5 rounded">Pro</span>}
                 {item.id === 'admin' && <span className="ml-auto text-xs bg-purple-600 text-purple-200 px-1.5 py-0.5 rounded">Admin</span>}
+                {item.id === 'whatsapp' && <span className="ml-auto text-xs bg-green-600 text-green-200 px-1.5 py-0.5 rounded">Admin</span>}
               </button>
             )
           })}
