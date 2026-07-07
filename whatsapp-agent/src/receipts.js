@@ -18,6 +18,10 @@ const RECEIPT_SCHEMA = {
       type: "boolean",
       description: "true si el monto coincide con el precio esperado del producto",
     },
+    medio_pago: {
+      anyOf: [{ type: "string" }, { type: "null" }],
+      description: "App o banco del comprobante: Nequi, Bancolombia, Daviplata, PSE, etc.",
+    },
     destinatario_coincide: {
       type: "boolean",
       description: "true si el destinatario/beneficiario coincide con el titular esperado",
@@ -46,6 +50,7 @@ const RECEIPT_SCHEMA = {
     "es_comprobante",
     "monto_detectado",
     "monto_coincide",
+    "medio_pago",
     "destinatario_coincide",
     "fecha_visible",
     "fecha_es_de_hoy_o_ayer",
@@ -139,6 +144,7 @@ Sé estricto: ante la duda, prefiere "revision_manual" en lugar de "aprobado".`;
       senales_sospechosas: [],
       monto_detectado: null,
       monto_coincide: false,
+      medio_pago: null,
       destinatario_coincide: false,
       fecha_visible: null,
       fecha_es_de_hoy_o_ayer: false,

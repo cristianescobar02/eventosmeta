@@ -108,6 +108,24 @@ APROBAR 573001234567
 
 > 📌 Después de que la ventana de 24h se cierra, WhatsApp solo permite **plantillas aprobadas** (Message Templates, con costo). Este bot llega hasta el límite de la ventana gratuita; si quieres re-contactar después, crea una plantilla de marketing en el administrador de WhatsApp y se puede agregar el envío.
 
+## Registro automático en Google Sheets (leads y ventas por producto)
+
+Cada lead y cada venta se registran solos en una hoja de cálculo tuya:
+
+- **`VENTAS — <producto>`** (una pestaña por producto): fecha, nombre, teléfono, monto pagado, método de pago detectado en el comprobante, **ad que lo trajo** (ID, titular y texto del anuncio), keyword, si la aprobación fue automática o manual, seguimientos que recibió, cantidad de mensajes y horas desde el primer contacto hasta la compra.
+- **`LEADS`**: cada persona que llega (con su ad de origen) — con esto calculas el % de conversión real por anuncio.
+- **`RESUMEN ADS`** (se recalcula solo): leads, ventas, % de conversión y facturación **por anuncio y por producto** — tu tablero para decidir qué ad escalar y cuál apagar.
+
+**Instalación (5 min):**
+1. Crea una hoja de cálculo en Google Sheets → Extensiones → Apps Script.
+2. Pega el contenido de [`google-apps-script.gs`](./google-apps-script.gs) y cambia la variable `SECRET` por una clave tuya.
+3. Implementar → Nueva implementación → Aplicación web → *Ejecutar como: tú* / *Acceso: cualquier persona* → copia la URL `/exec`.
+4. En el `.env` del bot: `SHEETS_WEBHOOK_URL=<esa URL>` y `SHEETS_SECRET=<tu clave>`.
+
+Si Sheets falla o no está configurado, el bot sigue funcionando normal (el registro nunca bloquea una conversación).
+
+> 💡 Para completar tu análisis de ROAS diario (gasto vs facturación, como lo llevas hoy), agrega el gasto publicitario del día en una columna manual o con el reporte de Meta; la facturación, #ventas y #conversaciones ya te las da el RESUMEN y las pestañas automáticas.
+
 ## Etiquetas que maneja el bot
 
 | Etiqueta | Significado |
@@ -132,6 +150,7 @@ whatsapp-agent/
 │   ├── agent.js         # Cerrador de ventas con Claude + base de conocimiento
 │   ├── receipts.js      # Validación de comprobantes con visión (JSON estructurado)
 │   ├── remarketing.js   # Seguimientos antes del cierre de la ventana de 24h
+│   ├── sheets.js        # Registro de leads/ventas en Google Sheets
 │   ├── whatsapp.js      # Cliente de la Cloud API (enviar, marcar leído, descargar media)
 │   ├── db.js            # Persistencia simple en JSON (contactos, tags, historial)
 │   └── config.js        # Variables de entorno + catálogo de productos

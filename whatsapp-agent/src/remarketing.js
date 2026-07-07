@@ -41,6 +41,7 @@ export async function runRemarketingTick() {
           const msg = renderTemplate(step.mensaje, product);
           await sendText(contact.phone, msg);
           contact.followupsSent.push(i);
+          contact.totalFollowups = (contact.totalFollowups || 0) + 1;
           contact.lastOutboundAt = Date.now();
           pushHistory(contact, "assistant", msg);
           save();

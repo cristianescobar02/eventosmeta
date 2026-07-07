@@ -3,6 +3,7 @@ import { upsertContact, pushHistory, addTag, save } from "./db.js";
 import { sendText, sendSequence, markAsRead, downloadMedia } from "./whatsapp.js";
 import { agentReply } from "./agent.js";
 import { validateReceipt } from "./receipts.js";
+import { logLead, logSale } from "./sheets.js";
 
 const OPT_OUT = ["stop", "baja", "no me escribas", "no me contactes", "dejame en paz"];
 
@@ -58,15 +59,30 @@ async function handleText(contact, text, referral) {
     .filter(Boolean)
     .join(" ");
   const matched = matchProductByKeyword(keywordSource);
+  const isNew = contact.stage === "nuevo";
+
+  // Guarda los datos del anuncio para el reporte de ventas/leads
+  if (referral && !contact.referral) {
+    contact.referral = {
+      sourceId: referral.source_id || "",
+      headline: referral.headline || "",
+      body: referral.body || "",
+      sourceUrl: referral.source_url || "",
+      sourceType: referral.source_type || "",
+    };
+    save();
+  }
 
   pushHistory(contact, "user", text);
 
   if (matched && (contact.stage === "nuevo" || contact.productId !== matched.id)) {
     contact.productId = matched.id;
     contact.stage = "conversando";
+    contact.keyword = matched.keywords?.[0] || "";
     addTag(contact, `interesado:${matched.id}`);
     if (referral?.source_id) addTag(contact, `ad:${referral.source_id}`);
     save();
+    logLead(contact, matched);
 
     const flow = (matched.flujoInicio || []).map((m) => renderTemplate(m, matched));
     if (flow.length) {
@@ -77,6 +93,12 @@ async function handleText(contact, text, referral) {
     }
   }
 
+  if (isNew && !matched) {
+    // Lead sin keyword (llegó orgánico o keyword mal escrita): también cuenta
+    contact.stage = "conversando";
+    save();
+    logLead(contact, null);
+  }
   if (contact.stage === "nuevo") contact.stage = "conversando";
   save();
   await replyWithAgent(contact);
@@ -104,8 +126,17 @@ async function handleImage(contact, media) {
   const result = await validateReceipt({ imageBuffer: buffer, mimeType, product });
   console.log(`🧾 Comprobante de ${contact.phone}:`, result.veredicto, "—", result.motivo);
 
+  if (result.es_comprobante) {
+    contact.lastReceipt = {
+      medio: result.medio_pago || "",
+      monto: result.monto_detectado || "",
+      ts: Date.now(),
+    };
+    save();
+  }
+
   if (result.veredicto === "aprobado" && product) {
-    await deliverProduct(contact, product);
+    await deliverProduct(contact, product, { origen: "auto", medioPago: result.medio_pago });
   } else if (result.veredicto === "rechazado") {
     addTag(contact, "comprobante_rechazado");
     const msg = result.es_comprobante
@@ -128,11 +159,16 @@ async function handleImage(contact, media) {
 }
 
 /** Entrega el producto y etiqueta al cliente como comprador. */
-export async function deliverProduct(contact, product) {
+export async function deliverProduct(contact, product, extra = {}) {
   contact.stage = "comprador";
   addTag(contact, "comprador");
   addTag(contact, `comprador:${product.id}`);
   save();
+
+  logSale(contact, product, {
+    origen: extra.origen || "manual",
+    medioPago: extra.medioPago || contact.lastReceipt?.medio || "",
+  });
 
   const msg = `✅ ¡Pago confirmado! Muchas gracias por tu compra 🎉
 
