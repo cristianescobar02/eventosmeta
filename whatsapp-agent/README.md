@@ -65,6 +65,19 @@ knowledge/
 
 En tu anuncio de Meta configura el mensaje pre-llenado con la palabra clave del producto (ej. "CURSO"). Cuando el cliente lo envíe, el bot dispara el flujo de inicio de ese producto automáticamente. El bot también lee el objeto `referral` del webhook y etiqueta al contacto con el ID del anuncio (`ad:<id>`).
 
+## Panel de control (visual de conversaciones)
+
+En `https://tu-servidor/admin` tienes un panel web para controlar cada conversación en tiempo real:
+
+- **KPIs**: contactos totales, en conversación, pagos pendientes, compradores y ventanas de 24h abiertas.
+- **Lista de conversaciones** con buscador y filtros por etapa, vista del último mensaje, etiquetas, producto y **tiempo restante de la ventana de 24h** de cada contacto.
+- **Chat completo** de cada cliente con burbujas estilo WhatsApp (se actualiza solo cada 4 segundos).
+- **Tomar el control**: botón *⏸ Pausar bot* — el agente deja de responder automáticamente (y se detiene el remarketing para ese contacto) y tú escribes directamente desde el panel. *▶️ Reanudar bot* devuelve el control a la IA.
+- **✅ Aprobar pago**: entrega el producto y etiqueta como comprador (equivale al comando `APROBAR` por WhatsApp).
+- **Etiquetas**: agrega o quita etiquetas con un clic, y reasigna el producto del contacto.
+
+Para activarlo, define `DASHBOARD_PASSWORD` en el `.env`. Sin contraseña configurada el panel queda desactivado. Funciona en celular y computador, con modo claro y oscuro.
+
 ## Cómo funciona la validación de comprobantes
 
 Cuando el cliente envía una imagen, el bot la descarga y la analiza con visión de Claude comparándola contra el precio del producto, el titular de tus cuentas y la fecha actual. El resultado es uno de tres veredictos:
@@ -114,6 +127,7 @@ Los datos se guardan en `data/db.json` (contactos, etiquetas e historial de conv
 whatsapp-agent/
 ├── src/
 │   ├── server.js        # Express: webhook de Meta (verificación + mensajes)
+│   ├── dashboard.js     # API del panel de control (/admin)
 │   ├── router.js        # Orquestador: keywords, texto→agente, imagen→validación
 │   ├── agent.js         # Cerrador de ventas con Claude + base de conocimiento
 │   ├── receipts.js      # Validación de comprobantes con visión (JSON estructurado)
@@ -121,6 +135,7 @@ whatsapp-agent/
 │   ├── whatsapp.js      # Cliente de la Cloud API (enviar, marcar leído, descargar media)
 │   ├── db.js            # Persistencia simple en JSON (contactos, tags, historial)
 │   └── config.js        # Variables de entorno + catálogo de productos
+├── public/dashboard.html # Interfaz del panel de control
 ├── config/products.json # Tus productos, precios, flujos y remarketing
 ├── knowledge/           # Base de conocimiento por producto (.md/.txt)
 └── data/db.json         # Base de datos (se crea sola, no se sube a git)

@@ -3,6 +3,7 @@ import express from "express";
 import { env } from "./config.js";
 import { handleIncomingMessage, handleAdminCommand } from "./router.js";
 import { startRemarketingScheduler } from "./remarketing.js";
+import { mountDashboard } from "./dashboard.js";
 
 const app = express();
 
@@ -80,8 +81,11 @@ async function processMessage(message, contactInfo) {
   }
 }
 
+mountDashboard(app);
+
 app.listen(env.PORT, () => {
   console.log(`🚀 Agente de WhatsApp escuchando en el puerto ${env.PORT}`);
   console.log(`   Webhook: POST /webhook  |  Verificación: GET /webhook`);
+  console.log(`   Panel de control: http://localhost:${env.PORT}/admin`);
   startRemarketingScheduler();
 });

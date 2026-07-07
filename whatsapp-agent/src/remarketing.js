@@ -24,6 +24,7 @@ export async function runRemarketingTick() {
       if (!contact.lastInboundAt) continue;
       if (contact.stage === "comprador" || hasTag(contact, "comprador")) continue;
       if (hasTag(contact, "no_contactar")) continue;
+      if (contact.botPaused) continue; // conversación en manos del humano
 
       const elapsed = now - contact.lastInboundAt;
       if (elapsed > WINDOW_LIMIT) continue; // ventana cerrada: solo plantillas pagas servirían

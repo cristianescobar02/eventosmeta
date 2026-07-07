@@ -83,6 +83,8 @@ async function handleText(contact, text, referral) {
 }
 
 async function replyWithAgent(contact) {
+  // Si pausaste el bot desde el panel, tú llevas la conversación
+  if (contact.botPaused) return;
   const reply = await agentReply(contact);
   if (!reply) return;
   await sendText(contact.phone, reply);
