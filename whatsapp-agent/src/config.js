@@ -13,7 +13,10 @@ export const env = {
   WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
   WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
   WHATSAPP_APP_SECRET: process.env.WHATSAPP_APP_SECRET || "",
-  CLAUDE_MODEL: process.env.CLAUDE_MODEL || "claude-opus-4-8",
+  // Conversación de ventas: modelo económico (la mayoría de mensajes son chat simple)
+  CLAUDE_MODEL_CHAT: process.env.CLAUDE_MODEL_CHAT || "claude-haiku-4-5",
+  // Validación de comprobantes: modelo con mayor precisión (aquí importa evitar fraude)
+  CLAUDE_MODEL_RECEIPTS: process.env.CLAUDE_MODEL_RECEIPTS || "claude-opus-4-8",
   ADMIN_WHATSAPP: process.env.ADMIN_WHATSAPP || "",
   PORT: Number(process.env.PORT || 3000),
   REQUIRE_MANUAL_APPROVAL:

@@ -78,6 +78,27 @@ En `https://tu-servidor/admin` tienes un panel web para controlar cada conversac
 
 Para activarlo, define `DASHBOARD_PASSWORD` en el `.env`. Sin contraseña configurada el panel queda desactivado. Funciona en celular y computador, con modo claro y oscuro.
 
+## Costo de Claude y cómo ajustarlo a tu volumen
+
+El bot usa **dos modelos distintos** a propósito, para balancear costo y precisión:
+
+- **`CLAUDE_MODEL_CHAT`** (por defecto `claude-haiku-4-5`) — conversación normal con el cliente. Es el modelo más económico de Claude; se usa aquí porque es donde ocurre el 90%+ de las llamadas.
+- **`CLAUDE_MODEL_RECEIPTS`** (por defecto `claude-opus-4-8`) — validación de comprobantes de pago. Aquí se prioriza precisión sobre costo, porque es la parte que evita fraudes.
+
+**Si quieres más calidad de conversación** (mejor manejo de objeciones complejas, tono más natural) a cambio de mayor costo, cambia `CLAUDE_MODEL_CHAT` a `claude-sonnet-5` (intermedio) u `claude-opus-4-8` (máxima calidad) en las variables de entorno. No requiere tocar código.
+
+Con **~350 conversaciones/día**, un estimado orientativo:
+
+| Configuración | Costo aprox./mes |
+|---|---|
+| `CLAUDE_MODEL_CHAT=claude-haiku-4-5` (por defecto) | ~$100 – $200 USD |
+| `CLAUDE_MODEL_CHAT=claude-sonnet-5` | ~$250 – $450 USD |
+| `CLAUDE_MODEL_CHAT=claude-opus-4-8` | ~$400 – $720 USD |
+
+(`CLAUDE_MODEL_RECEIPTS` se mantiene en Opus 4.8 en los tres casos — es una fracción pequeña del gasto total porque solo se usa en el momento del pago, no en toda la conversación.)
+
+Puedes ver tu consumo real en cualquier momento en **console.anthropic.com → Facturación**, y ajustar el umbral de recarga automática ahí mismo para no llevarte sorpresas.
+
 ## Cómo funciona la validación de comprobantes
 
 Cuando el cliente envía una imagen, el bot la descarga y la analiza con visión de Claude comparándola contra el precio del producto, el titular de tus cuentas y la fecha actual. El resultado es uno de tres veredictos:

@@ -38,6 +38,8 @@ para el remarketing). Cuesta ~5 USD/mes tras el crédito de prueba.
    | Variable | Valor |
    |---|---|
    | `ANTHROPIC_API_KEY` | tu key de la Fase 1 (`sk-ant-...`) |
+   | `CLAUDE_MODEL_CHAT` | `claude-haiku-4-5` *(económico, para la conversación)* |
+   | `CLAUDE_MODEL_RECEIPTS` | `claude-opus-4-8` *(precisión, para validar comprobantes)* |
    | `WHATSAPP_VERIFY_TOKEN` | inventa una palabra, ej. `mi-token-123` |
    | `DASHBOARD_PASSWORD` | inventa una clave para tu panel |
    | `SHEETS_WEBHOOK_URL` | la URL `/exec` de Google (ya la tienes) |
