@@ -1,4 +1,4 @@
-import { env } from "./config.js";
+import { getSetting } from "./settings.js";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -6,7 +6,7 @@ async function graphRequest(path, options = {}) {
   const res = await fetch(`${GRAPH}${path}`, {
     ...options,
     headers: {
-      Authorization: `Bearer ${env.WHATSAPP_TOKEN}`,
+      Authorization: `Bearer ${getSetting("whatsappToken")}`,
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
@@ -20,7 +20,7 @@ async function graphRequest(path, options = {}) {
 
 /** Envía un mensaje de texto libre (solo válido dentro de la ventana de 24h). */
 export async function sendText(to, body) {
-  return graphRequest(`/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+  return graphRequest(`/${getSetting("whatsappPhoneNumberId")}/messages`, {
     method: "POST",
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -34,7 +34,7 @@ export async function sendText(to, body) {
 /** Marca un mensaje como leído (doble check azul). */
 export async function markAsRead(messageId) {
   try {
-    await graphRequest(`/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    await graphRequest(`/${getSetting("whatsappPhoneNumberId")}/messages`, {
       method: "POST",
       body: JSON.stringify({
         messaging_product: "whatsapp",
@@ -54,7 +54,7 @@ export async function markAsRead(messageId) {
 export async function downloadMedia(mediaId) {
   const meta = await graphRequest(`/${mediaId}`);
   const res = await fetch(meta.url, {
-    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` },
+    headers: { Authorization: `Bearer ${getSetting("whatsappToken")}` },
   });
   if (!res.ok) throw new Error(`Descarga de media falló: ${res.status}`);
   const buffer = Buffer.from(await res.arrayBuffer());
@@ -63,7 +63,7 @@ export async function downloadMedia(mediaId) {
 
 /** Envía una imagen ya subida a WhatsApp (por media ID). */
 export async function sendImage(to, mediaId, caption) {
-  return graphRequest(`/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+  return graphRequest(`/${getSetting("whatsappPhoneNumberId")}/messages`, {
     method: "POST",
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -76,7 +76,7 @@ export async function sendImage(to, mediaId, caption) {
 
 /** Envía un video ya subido a WhatsApp (por media ID). */
 export async function sendVideo(to, mediaId, caption) {
-  return graphRequest(`/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+  return graphRequest(`/${getSetting("whatsappPhoneNumberId")}/messages`, {
     method: "POST",
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -97,9 +97,9 @@ export async function uploadMedia(buffer, mimeType, filename) {
   form.append("messaging_product", "whatsapp");
   form.append("file", new Blob([buffer], { type: mimeType }), filename || "archivo");
 
-  const res = await fetch(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
+  const res = await fetch(`${GRAPH}/${getSetting("whatsappPhoneNumberId")}/media`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` },
+    headers: { Authorization: `Bearer ${getSetting("whatsappToken")}` },
     body: form,
   });
   if (!res.ok) {
@@ -113,7 +113,7 @@ export async function uploadMedia(buffer, mimeType, filename) {
 /** Consulta la calidad y el límite de mensajería del número (para detectar riesgo de bloqueo). */
 export async function getPhoneNumberQuality() {
   const data = await graphRequest(
-    `/${env.WHATSAPP_PHONE_NUMBER_ID}?fields=quality_rating,messaging_limit_tier`,
+    `/${getSetting("whatsappPhoneNumberId")}?fields=quality_rating,messaging_limit_tier`,
   );
   return {
     quality: data.quality_rating || "UNKNOWN", // GREEN | YELLOW | RED | UNKNOWN

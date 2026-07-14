@@ -23,13 +23,14 @@ var SECRET = "cambia-esta-clave";
 
 var HEADERS_VENTAS = [
   "Fecha", "Nombre", "Teléfono", "Pagó", "Método de pago",
-  "Ad (ID)", "Ad (titular)", "Ad (texto)", "Keyword",
-  "Aprobación", "Seguimientos", "Mensajes", "Horas hasta compra"
+  "Ad (ID)", "Ad (titular)", "Ad (texto)", "Ad (nombre)", "Conjunto de anuncios", "Campaña",
+  "Keyword", "Aprobación", "Seguimientos", "Mensajes", "Horas hasta compra"
 ];
 
 var HEADERS_LEADS = [
   "Fecha", "Nombre", "Teléfono", "Producto",
-  "Keyword", "Ad (ID)", "Ad (titular)", "Ad (texto)", "Ad (URL)"
+  "Keyword", "Ad (ID)", "Ad (titular)", "Ad (texto)", "Ad (nombre)", "Conjunto de anuncios", "Campaña",
+  "Ad (URL)"
 ];
 
 var HEADERS_RESUMEN = [
@@ -77,8 +78,8 @@ function registrarVenta(d) {
   var sheet = getSheet("VENTAS — " + d.producto, HEADERS_VENTAS);
   sheet.appendRow([
     d.fecha, d.nombre, "+" + d.telefono, d.pago, d.metodoPago,
-    d.adId, d.adTitular, d.adTexto, d.keyword,
-    d.aprobacion, d.seguimientos, d.mensajes, d.horasHastaCompra
+    d.adId, d.adTitular, d.adTexto, d.nombreAd, d.conjuntoAnuncios, d.campana,
+    d.keyword, d.aprobacion, d.seguimientos, d.mensajes, d.horasHastaCompra
   ]);
 }
 
@@ -86,7 +87,8 @@ function registrarLead(d) {
   var sheet = getSheet("LEADS", HEADERS_LEADS);
   sheet.appendRow([
     d.fecha, d.nombre, "+" + d.telefono, d.producto,
-    d.keyword, d.adId, d.adTitular, d.adTexto, d.adUrl
+    d.keyword, d.adId, d.adTitular, d.adTexto, d.nombreAd, d.conjuntoAnuncios, d.campana,
+    d.adUrl
   ]);
 }
 

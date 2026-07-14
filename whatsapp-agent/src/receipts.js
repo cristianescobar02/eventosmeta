@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env, catalog } from "./config.js";
+import { getSetting } from "./settings.js";
 
 const client = new Anthropic();
 
@@ -106,7 +107,7 @@ Fecha de hoy: ${hoy} (hora de Colombia)
 Sé estricto: ante la duda, prefiere "revision_manual" en lugar de "aprobado".`;
 
   const response = await client.messages.create({
-    model: env.CLAUDE_MODEL_RECEIPTS,
+    model: getSetting("claudeModelReceipts"),
     max_tokens: 2048,
     output_config: { format: { type: "json_schema", schema: RECEIPT_SCHEMA } },
     messages: [

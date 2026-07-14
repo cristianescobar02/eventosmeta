@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
@@ -91,20 +92,29 @@ export function renderTemplate(text, product) {
     .replaceAll("{precio}", product ? product.precioTexto : "");
 }
 
-/** Carga la base de conocimiento (archivos .md/.txt) de un producto. */
+/** Carga la base de conocimiento (archivos .md/.txt + fuentes subidas) de un producto. */
 export function loadKnowledge(productId) {
   const dir = path.join(ROOT, "knowledge", productId);
-  if (!fs.existsSync(dir)) return "";
   const parts = [];
-  for (const file of fs.readdirSync(dir).sort()) {
-    if (!/\.(md|txt)$/i.test(file)) continue;
-    const content = fs.readFileSync(path.join(dir, file), "utf8").trim();
-    if (content) parts.push(`--- ${file} ---\n${content}`);
+
+  if (fs.existsSync(dir)) {
+    for (const file of fs.readdirSync(dir).sort()) {
+      if (!/\.(md|txt)$/i.test(file)) continue;
+      const content = fs.readFileSync(path.join(dir, file), "utf8").trim();
+      if (content) parts.push(`--- ${file} ---\n${content}`);
+    }
   }
+
+  for (const source of listKnowledgeSources(productId)) {
+    const content = fs.existsSync(source.file) ? fs.readFileSync(source.file, "utf8").trim() : "";
+    if (content) parts.push(`--- ${source.name} ---\n${content}`);
+  }
+
   return parts.join("\n\n");
 }
 
 const KNOWLEDGE_MAIN_FILE = "info.md";
+const SOURCES_INDEX_FILE = "sources.json";
 
 /** Lee el archivo principal de conocimiento que edita el dashboard (uno solo, texto plano). */
 export function loadKnowledgeMain(productId) {
@@ -118,6 +128,62 @@ export function saveKnowledgeMain(productId, content) {
   const dir = path.join(ROOT, "knowledge", productId);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, KNOWLEDGE_MAIN_FILE), content ?? "");
+}
+
+function sourcesDir(productId) {
+  return path.join(ROOT, "knowledge", productId, "sources");
+}
+
+function sourcesIndexFile(productId) {
+  return path.join(sourcesDir(productId), SOURCES_INDEX_FILE);
+}
+
+/**
+ * Lista las fuentes de conocimiento subidas (archivos o links) de un
+ * producto: [{ id, type, name, addedAt, file }]. `file` es la ruta absoluta
+ * al .txt con el contenido ya extraído.
+ */
+export function listKnowledgeSources(productId) {
+  const indexFile = sourcesIndexFile(productId);
+  if (!fs.existsSync(indexFile)) return [];
+  try {
+    const list = JSON.parse(fs.readFileSync(indexFile, "utf8"));
+    return list.map((s) => ({ ...s, file: path.join(sourcesDir(productId), `${s.id}.txt`) }));
+  } catch {
+    return [];
+  }
+}
+
+/** Agrega una fuente de conocimiento (contenido ya extraído a texto plano). */
+export function addKnowledgeSource(productId, { type, name, content }) {
+  const dir = sourcesDir(productId);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const id = crypto.randomUUID();
+  fs.writeFileSync(path.join(dir, `${id}.txt`), content || "");
+
+  const indexFile = sourcesIndexFile(productId);
+  const list = fs.existsSync(indexFile) ? JSON.parse(fs.readFileSync(indexFile, "utf8")) : [];
+  const entry = { id, type, name, addedAt: Date.now() };
+  list.push(entry);
+  fs.writeFileSync(indexFile, JSON.stringify(list, null, 2));
+  return entry;
+}
+
+/** Elimina una fuente de conocimiento (archivo o link) por su id. */
+export function removeKnowledgeSource(productId, sourceId) {
+  const dir = sourcesDir(productId);
+  const indexFile = sourcesIndexFile(productId);
+  if (!fs.existsSync(indexFile)) return false;
+
+  const list = JSON.parse(fs.readFileSync(indexFile, "utf8"));
+  const next = list.filter((s) => s.id !== sourceId);
+  if (next.length === list.length) return false;
+
+  fs.writeFileSync(indexFile, JSON.stringify(next, null, 2));
+  const txtFile = path.join(dir, `${sourceId}.txt`);
+  if (fs.existsSync(txtFile)) fs.unlinkSync(txtFile);
+  return true;
 }
 
 /**

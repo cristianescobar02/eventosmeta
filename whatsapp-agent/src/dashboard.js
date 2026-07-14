@@ -10,12 +10,18 @@ import {
   saveCatalog,
   loadKnowledgeMain,
   saveKnowledgeMain,
+  listKnowledgeSources,
+  addKnowledgeSource,
+  removeKnowledgeSource,
 } from "./config.js";
+import { getSettingsForDisplay, updateSettings } from "./settings.js";
+import { extractFromFile, extractFromLink } from "./extract.js";
 import { allContacts, getContact, pushHistory, addTag, save } from "./db.js";
 import { sendText, uploadMedia } from "./whatsapp.js";
 import { deliverProduct } from "./router.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
+const uploadDoc = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 function slugify(text) {
   return String(text)
@@ -294,6 +300,68 @@ export function mountDashboard(app) {
     } catch (err) {
       res.status(502).json({ error: `WhatsApp: ${err.message}` });
     }
+  });
+
+  // ── Fuentes de conocimiento: archivos (PDF/Word/Excel/texto) y links ──
+
+  api.get("/products/:id/sources", (req, res) => {
+    if (!getProduct(req.params.id)) return res.status(404).json({ error: "Producto no encontrado" });
+    const list = listKnowledgeSources(req.params.id).map(({ id, type, name, addedAt }) => ({
+      id,
+      type,
+      name,
+      addedAt,
+    }));
+    res.json(list);
+  });
+
+  api.post("/products/:id/sources/file", uploadDoc.single("file"), async (req, res) => {
+    if (!getProduct(req.params.id)) return res.status(404).json({ error: "Producto no encontrado" });
+    if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
+    try {
+      const content = await extractFromFile(req.file.buffer, req.file.mimetype, req.file.originalname);
+      if (!content) return res.status(400).json({ error: "No se pudo extraer texto de ese archivo" });
+      const entry = addKnowledgeSource(req.params.id, {
+        type: "file",
+        name: req.file.originalname,
+        content,
+      });
+      res.json({ ok: true, source: entry });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  api.post("/products/:id/sources/link", async (req, res) => {
+    if (!getProduct(req.params.id)) return res.status(404).json({ error: "Producto no encontrado" });
+    const url = String(req.body?.url || "").trim();
+    if (!url) return res.status(400).json({ error: "Falta el link" });
+    try {
+      const content = await extractFromLink(url);
+      if (!content) return res.status(400).json({ error: "No se pudo extraer texto de ese link" });
+      const entry = addKnowledgeSource(req.params.id, { type: "link", name: url, content });
+      res.json({ ok: true, source: entry });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  api.delete("/products/:id/sources/:sourceId", (req, res) => {
+    if (!getProduct(req.params.id)) return res.status(404).json({ error: "Producto no encontrado" });
+    const removed = removeKnowledgeSource(req.params.id, req.params.sourceId);
+    if (!removed) return res.status(404).json({ error: "Fuente no encontrada" });
+    res.json({ ok: true });
+  });
+
+  // ── Integraciones (WhatsApp/Meta, Meta Ads, Meta Pixel, Google Sheets) ──
+
+  api.get("/integrations", (_req, res) => {
+    res.json(getSettingsForDisplay());
+  });
+
+  api.put("/integrations", (req, res) => {
+    updateSettings(req.body || {});
+    res.json({ ok: true, settings: getSettingsForDisplay() });
   });
 
   app.use("/api", api);

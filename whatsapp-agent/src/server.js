@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import express from "express";
 import { env } from "./config.js";
+import { getSetting } from "./settings.js";
 import { handleIncomingMessage, handleAdminCommand } from "./router.js";
 import { startRemarketingScheduler } from "./remarketing.js";
 import { mountDashboard } from "./dashboard.js";
@@ -24,7 +25,7 @@ app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode === "subscribe" && token === getSetting("whatsappVerifyToken")) {
     console.log("✅ Webhook verificado por Meta");
     return res.status(200).send(challenge);
   }
@@ -32,11 +33,11 @@ app.get("/webhook", (req, res) => {
 });
 
 function validSignature(req) {
-  if (!env.WHATSAPP_APP_SECRET) return true; // validación opcional
+  const appSecret = getSetting("whatsappAppSecret");
+  if (!appSecret) return true; // validación opcional
   const signature = req.get("x-hub-signature-256") || "";
   const expected =
-    "sha256=" +
-    crypto.createHmac("sha256", env.WHATSAPP_APP_SECRET).update(req.rawBody).digest("hex");
+    "sha256=" + crypto.createHmac("sha256", appSecret).update(req.rawBody).digest("hex");
   try {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   } catch {
@@ -68,9 +69,10 @@ app.post("/webhook", (req, res) => {
 async function processMessage(message, contactInfo) {
   try {
     // Comandos del administrador (APROBAR <telefono>)
+    const adminWhatsapp = getSetting("adminWhatsapp");
     if (
-      env.ADMIN_WHATSAPP &&
-      message.from === env.ADMIN_WHATSAPP &&
+      adminWhatsapp &&
+      message.from === adminWhatsapp &&
       message.type === "text" &&
       (await handleAdminCommand(message.text.body))
     ) {

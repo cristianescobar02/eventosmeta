@@ -1,16 +1,18 @@
 import { catalog } from "./config.js";
+import { getSetting } from "./settings.js";
 
 /**
  * Integración con Google Sheets vía Google Apps Script (Web App).
- * Configura SHEETS_WEBHOOK_URL y SHEETS_SECRET en el .env.
+ * Configura la URL y la clave desde el panel (pestaña Integraciones) o con
+ * SHEETS_WEBHOOK_URL / SHEETS_SECRET en el .env.
  * El código del Apps Script está en google-apps-script.gs (raíz del proyecto).
  *
  * Los envíos son "fire and forget": si Sheets falla, la venta/lead se registra
  * en el log del servidor pero nunca bloquea la conversación de WhatsApp.
  */
 
-const URL = () => process.env.SHEETS_WEBHOOK_URL || "";
-const SECRET = () => process.env.SHEETS_SECRET || "";
+const URL = () => getSetting("sheetsWebhookUrl");
+const SECRET = () => getSetting("sheetsSecret");
 
 async function post(payload) {
   if (!URL()) return; // integración no configurada
@@ -45,6 +47,9 @@ export function logLead(contact, product) {
     adTitular: r.headline || "",
     adTexto: r.body || "",
     adUrl: r.sourceUrl || "",
+    campana: r.campaignName || "",
+    conjuntoAnuncios: r.adSetName || "",
+    nombreAd: r.adName || "",
   });
 }
 
@@ -68,6 +73,9 @@ export function logSale(contact, product, extra = {}) {
     adId: r.sourceId || "",
     adTitular: r.headline || "",
     adTexto: r.body || "",
+    campana: r.campaignName || "",
+    conjuntoAnuncios: r.adSetName || "",
+    nombreAd: r.adName || "",
     seguimientos: contact.totalFollowups || 0,
     mensajes: contact.history?.length || 0,
     horasHastaCompra: horas,

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { env, catalog, getProduct, loadKnowledge } from "./config.js";
+import { catalog, getProduct, loadKnowledge } from "./config.js";
+import { getSetting } from "./settings.js";
 
 const client = new Anthropic();
 
@@ -120,7 +121,7 @@ export async function agentReply(contact) {
   while (messages.length && messages[0].role !== "user") messages.shift();
   if (!messages.length) return null;
 
-  const model = env.CLAUDE_MODEL_CHAT;
+  const model = getSetting("claudeModelChat");
   // Haiku no soporta "thinking" adaptativo — solo lo activamos en modelos que lo aceptan
   const supportsThinking = !model.includes("haiku");
 

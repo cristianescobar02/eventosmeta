@@ -1,16 +1,18 @@
 import {
-  env,
   catalog,
   matchProductByKeyword,
   getProduct,
   renderTemplate,
   normalizeFlowStep,
 } from "./config.js";
+import { getSetting } from "./settings.js";
 import { upsertContact, pushHistory, addTag, save } from "./db.js";
 import { sendText, sendSequence, markAsRead, downloadMedia } from "./whatsapp.js";
 import { agentReply } from "./agent.js";
 import { validateReceipt } from "./receipts.js";
 import { logLead, logSale } from "./sheets.js";
+import { getAdInfo } from "./metaAds.js";
+import { sendPurchaseEvent } from "./metaConversions.js";
 
 const OPT_OUT = ["stop", "baja", "no me escribas", "no me contactes", "dejame en paz"];
 
@@ -68,7 +70,8 @@ async function handleText(contact, text, referral) {
   const matched = matchProductByKeyword(keywordSource);
   const isNew = contact.stage === "nuevo";
 
-  // Guarda los datos del anuncio para el reporte de ventas/leads
+  // Guarda los datos del anuncio para el reporte de ventas/leads y la
+  // atribución de campañas (ctwa_clid → Meta Conversions API al vender)
   if (referral && !contact.referral) {
     contact.referral = {
       sourceId: referral.source_id || "",
@@ -76,8 +79,21 @@ async function handleText(contact, text, referral) {
       body: referral.body || "",
       sourceUrl: referral.source_url || "",
       sourceType: referral.source_type || "",
+      ctwaClid: referral.ctwa_clid || "",
     };
     save();
+
+    // Enriquecer con el nombre real del anuncio/conjunto/campaña (si está
+    // configurada la Marketing API) — no bloquea el flujo si falla o tarda.
+    if (referral.source_id) {
+      getAdInfo(referral.source_id)
+        .then((info) => {
+          if (!info) return;
+          contact.referral = { ...contact.referral, ...info };
+          save();
+        })
+        .catch(() => {});
+    }
   }
 
   pushHistory(contact, "user", text);
@@ -186,6 +202,7 @@ export async function deliverProduct(contact, product, extra = {}) {
     origen: extra.origen || "manual",
     medioPago: extra.medioPago || contact.lastReceipt?.medio || "",
   });
+  sendPurchaseEvent(contact, product).catch(() => {});
 
   const msg = `✅ ¡Pago confirmado! Muchas gracias por tu compra 🎉
 
@@ -201,7 +218,7 @@ Guarda este enlace. Si tienes cualquier problema para entrar, escríbeme por aqu
 }
 
 async function notifyAdmin(contact, result, label) {
-  if (!env.ADMIN_WHATSAPP) return;
+  if (!getSetting("adminWhatsapp")) return;
   const lines = [
     `🔔 ${label}`,
     `Cliente: ${contact.name || "sin nombre"} (+${contact.phone})`,
@@ -217,7 +234,7 @@ async function notifyAdmin(contact, result, label) {
     }
     lines.push("", `Para aprobar manualmente responde aquí: APROBAR ${contact.phone}`);
   }
-  await sendText(env.ADMIN_WHATSAPP, lines.join("\n")).catch((err) =>
+  await sendText(getSetting("adminWhatsapp"), lines.join("\n")).catch((err) =>
     console.error("No se pudo notificar al admin:", err.message),
   );
 }
@@ -234,15 +251,15 @@ export async function handleAdminCommand(text) {
   const { getContact } = await import("./db.js");
   const contact = getContact(phone);
   if (!contact) {
-    await sendText(env.ADMIN_WHATSAPP, `No encuentro el contacto ${phone}`);
+    await sendText(getSetting("adminWhatsapp"), `No encuentro el contacto ${phone}`);
     return true;
   }
   const product = contact.productId ? getProduct(contact.productId) : null;
   if (!product) {
-    await sendText(env.ADMIN_WHATSAPP, `El contacto ${phone} no tiene producto asignado`);
+    await sendText(getSetting("adminWhatsapp"), `El contacto ${phone} no tiene producto asignado`);
     return true;
   }
   await deliverProduct(contact, product);
-  await sendText(env.ADMIN_WHATSAPP, `✅ Entregado ${product.nombre} a +${phone}`);
+  await sendText(getSetting("adminWhatsapp"), `✅ Entregado ${product.nombre} a +${phone}`);
   return true;
 }

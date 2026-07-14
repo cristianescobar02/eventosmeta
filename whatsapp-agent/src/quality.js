@@ -1,5 +1,5 @@
-import { env } from "./config.js";
 import { getPhoneNumberQuality, sendText } from "./whatsapp.js";
+import { getSetting } from "./settings.js";
 import { getQualityState, setQualityState } from "./db.js";
 
 const LABEL = {
@@ -16,7 +16,7 @@ const LABEL = {
  * Así te enteras a tiempo de ajustar el remarketing antes de que empeore.
  */
 export async function runQualityCheck() {
-  if (!env.ADMIN_WHATSAPP) return;
+  if (!getSetting("adminWhatsapp")) return;
 
   let current;
   try {
@@ -50,7 +50,7 @@ export async function runQualityCheck() {
       .filter(Boolean)
       .join("\n");
 
-    await sendText(env.ADMIN_WHATSAPP, msg).catch((err) =>
+    await sendText(getSetting("adminWhatsapp"), msg).catch((err) =>
       console.error("No se pudo notificar la calidad al admin:", err.message),
     );
   }

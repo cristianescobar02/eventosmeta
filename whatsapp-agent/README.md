@@ -78,6 +78,27 @@ En la pestaña **Productos** del panel (`/admin`) puedes crear y editar todo sin
   - Hay un **filtro técnico de respaldo**: si a pesar de la instrucción el modelo llegara a repetir una cifra del documento, el sistema lo detecta automáticamente y regenera la respuesta antes de enviarla — no depende solo de que el modelo "se porte bien".
   - El precio de venta del producto (`precioTexto`) se sigue mostrando normal; lo que se protege son los números *dentro* del documento de referencia.
 - **Remarketing por condición de etiqueta**: cada seguimiento puede exigir o excluir una etiqueta (ej. "solo si NO tiene la etiqueta `comprador`"), para dirigir mensajes distintos según el estado real del cliente.
+- **Archivos y links como fuente de conocimiento**: además del cuadro de texto, puedes subir **PDF, Word (.docx), Excel/CSV (.xlsx/.xls/.csv)** o pegar un **link** (una página web o un PDF en línea) — el bot extrae el texto automáticamente y lo suma a lo que ya sabe del producto. Cada fuente aparece en una lista con su ícono (📄 archivo / 🔗 link) y se puede eliminar en cualquier momento.
+
+## Atribución de anuncios y Meta Pixel
+
+Dos integraciones opcionales (se activan solas si las configuras en la pestaña **Integraciones**):
+
+- **Nombre real del anuncio/campaña** (Meta Marketing API): con un token de permiso `ads_read`, cuando llega un lead desde un anuncio el bot busca automáticamente el **nombre del anuncio, del conjunto de anuncios y de la campaña** (no solo el ID crudo) y los guarda en el contacto y en tus reportes de Google Sheets — así ves en la hoja qué campaña/ángulo vende, igual que llevabas antes a mano en tu Excel. El lookup se cachea en memoria (un mismo anuncio no se vuelve a consultar).
+- **Meta Pixel / Conversions API**: cuando se confirma una venta, si configuraste un Pixel ID y un token de Conversions API, el bot le envía a Meta un evento `Purchase` usando el `ctwa_clid` (el ID de clic del anuncio que WhatsApp incluye en el primer mensaje) — esto le da a Meta la señal de **venta real**, no solo "conversación iniciada", para que optimice mejor tus campañas. Es *best effort*: si algo falla o no está configurado, no bloquea ni afecta la venta. ⚠️ El formato exacto de este evento puede cambiar con el tiempo según la documentación de Meta para "Conversions API for click-to-WhatsApp ads" — revisa esa doc si notás que los eventos no llegan.
+
+## Configurar todo desde el panel (pestaña Integraciones)
+
+Ya no necesitas entrar a Railway para cambiar credenciales. En **Integraciones** puedes conectar o actualizar en caliente:
+
+- WhatsApp Cloud API (token, Phone Number ID, Verify Token, App Secret)
+- Meta Marketing API (token para nombres reales de anuncios)
+- Meta Pixel / Conversions API (Pixel ID + token)
+- Google Sheets (URL del Web App + clave secreta)
+- Tu WhatsApp de alertas
+- Qué modelo de Claude usar para conversación y para validar comprobantes
+
+Los campos de token/clave **nunca muestran el valor completo** una vez guardado — solo un indicador de "configurado" con los últimos 4 caracteres, y un campo vacío para escribir uno nuevo (dejarlo en blanco significa "no cambiar"). Esto se guarda en `data/settings.json` (por eso conviene el volumen persistente de Railway que se menciona en `DEPLOY.md`) y tiene prioridad sobre las variables de entorno — el `.env`/Railway sigue funcionando como respaldo inicial si nunca configuras algo desde el panel.
 
 ## Panel de control (visual de conversaciones)
 
@@ -200,6 +221,10 @@ whatsapp-agent/
 │   ├── remarketing.js   # Seguimientos antes del cierre de la ventana de 24h
 │   ├── quality.js       # Monitoreo del Quality Rating (riesgo de bloqueo)
 │   ├── sheets.js        # Registro de leads/ventas en Google Sheets
+│   ├── settings.js      # Configuración dinámica (panel de Integraciones)
+│   ├── extract.js       # Extracción de texto de PDF/Word/Excel/links
+│   ├── metaAds.js       # Nombre real del anuncio/campaña (Marketing API)
+│   ├── metaConversions.js # Evento de compra a Meta Pixel/Conversions API
 │   ├── whatsapp.js      # Cliente de la Cloud API (enviar, marcar leído, descargar media)
 │   ├── db.js            # Persistencia simple en JSON (contactos, tags, historial)
 │   └── config.js        # Variables de entorno + catálogo de productos

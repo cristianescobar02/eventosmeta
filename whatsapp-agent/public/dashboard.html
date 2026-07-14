@@ -269,6 +269,29 @@
   .editor-actions .save { background: var(--accent); color: #fff; }
   .editor-actions .delete { background: var(--danger-soft); color: var(--danger); margin-left: auto; }
   .editor-actions .cancel { background: var(--neutral-soft); color: var(--ink-2); }
+
+  /* ── Fuentes de conocimiento ── */
+  .source-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 6px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); font-size: 13px;
+  }
+  .source-item .stype { font-size: 13px; }
+  .source-item .sname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-item button { border: none; background: none; color: var(--ink-3); font-size: 14px; padding: 2px 6px; }
+  .source-item button:hover { color: var(--danger); }
+
+  /* ── Integraciones ── */
+  #integrationsMain { display: none; flex: 1; padding: 0 20px 16px; min-height: 0; overflow-y: auto; }
+  #integrationsMain.visible { display: block; }
+  #integrationsPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; max-width: 640px; margin: 0 auto;
+  }
+  .hint { font-size: 12.5px; color: var(--ink-2); margin: -4px 0 12px; line-height: 1.5; }
+  .hint code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .int-status { font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .int-status.on { color: var(--accent); }
+  .int-status.off { color: var(--ink-3); }
 </style>
 </head>
 <body>
@@ -292,6 +315,7 @@
     <div id="tabs">
       <button data-tab="chats" class="active">Conversaciones</button>
       <button data-tab="products">Productos</button>
+      <button data-tab="integrations">Integraciones</button>
     </div>
     <div id="stats"></div>
   </header>
@@ -383,6 +407,21 @@
           <textarea id="pf_knowledge" rows="7" placeholder="Toda la información que el bot debe conocer sobre este producto: qué incluye, para quién es, preguntas frecuentes, garantías…"></textarea>
         </div>
 
+        <div class="section-title">Archivos y links adicionales (PDF, Word, Excel, páginas web)</div>
+        <div id="sourcesNote" style="font-size:12.5px;color:var(--ink-3);margin-bottom:10px">Guarda el producto primero para poder agregar archivos o links.</div>
+        <div id="sourcesBlock" style="display:none">
+          <div id="sourcesList"></div>
+          <div class="media-row" style="margin:8px 0">
+            <input type="file" id="sourceFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.md" />
+          </div>
+          <div class="field-row">
+            <div class="field" style="flex:1">
+              <input type="text" id="sourceLinkInput" placeholder="https://tu-pagina-con-informacion.com" />
+            </div>
+            <button type="button" class="add" id="addSourceLinkBtn" style="align-self:center">+ agregar link</button>
+          </div>
+        </div>
+
         <div class="section-title">Remarketing (seguimientos automáticos)
           <button type="button" class="add" id="addRemarketingStepBtn">+ agregar paso</button>
         </div>
@@ -392,6 +431,88 @@
           <button type="button" class="cancel" id="cancelProductBtn">Cancelar</button>
           <button type="submit" class="save">Guardar producto</button>
           <button type="button" class="delete" id="deleteProductBtn">Eliminar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="integrationsMain">
+    <section id="integrationsPane">
+      <h2 style="font-size:15px;margin-bottom:4px">Integraciones</h2>
+      <p class="hint">Conecta o actualiza tus credenciales sin tocar Railway. Los campos de token/clave nunca muestran el valor completo por seguridad — solo indican si ya están configurados. Deja un campo en blanco para no cambiarlo.</p>
+      <form id="integrationsForm">
+        <div class="section-title">WhatsApp Cloud API (Meta)</div>
+        <div class="field">
+          <label>Token de acceso <span class="int-status" data-key="whatsappToken"></span></label>
+          <input type="password" id="int_whatsappToken" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Phone Number ID</label>
+          <input type="text" id="int_whatsappPhoneNumberId" />
+        </div>
+        <div class="field">
+          <label>Verify Token (el mismo que configuraste en Meta)</label>
+          <input type="text" id="int_whatsappVerifyToken" />
+        </div>
+        <div class="field">
+          <label>App Secret (opcional, valida la firma de los webhooks) <span class="int-status" data-key="whatsappAppSecret"></span></label>
+          <input type="password" id="int_whatsappAppSecret" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Atribución de anuncios (Meta Marketing API)</div>
+        <p class="hint">Opcional: con un token de permiso <code>ads_read</code>, el bot muestra el nombre real del anuncio/conjunto/campaña (no solo el ID) en tus reportes de ventas.</p>
+        <div class="field">
+          <label>Token de Marketing API <span class="int-status" data-key="metaAdsToken"></span></label>
+          <input type="password" id="int_metaAdsToken" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Meta Pixel / Conversions API</div>
+        <p class="hint">Opcional: envía el evento de compra de vuelta a Meta (con el <code>ctwa_clid</code> del anuncio) para que optimice tus campañas con ventas reales, no solo conversaciones.</p>
+        <div class="field">
+          <label>Pixel ID</label>
+          <input type="text" id="int_metaPixelId" />
+        </div>
+        <div class="field">
+          <label>Token de Conversions API <span class="int-status" data-key="metaConversionsToken"></span></label>
+          <input type="password" id="int_metaConversionsToken" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Google Sheets</div>
+        <div class="field">
+          <label>URL del Web App (Apps Script, termina en /exec)</label>
+          <input type="text" id="int_sheetsWebhookUrl" />
+        </div>
+        <div class="field">
+          <label>Clave secreta (la misma del código de Apps Script) <span class="int-status" data-key="sheetsSecret"></span></label>
+          <input type="password" id="int_sheetsSecret" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Otros</div>
+        <div class="field">
+          <label>Tu WhatsApp (alertas de ventas y comprobantes)</label>
+          <input type="text" id="int_adminWhatsapp" placeholder="573001112233" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Modelo para la conversación</label>
+            <select id="int_claudeModelChat">
+              <option value="claude-haiku-4-5">Haiku 4.5 (económico)</option>
+              <option value="claude-sonnet-5">Sonnet 5 (intermedio)</option>
+              <option value="claude-opus-4-8">Opus 4.8 (máxima calidad)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Modelo para validar comprobantes</label>
+            <select id="int_claudeModelReceipts">
+              <option value="claude-opus-4-8">Opus 4.8 (recomendado)</option>
+              <option value="claude-sonnet-5">Sonnet 5</option>
+              <option value="claude-haiku-4-5">Haiku 4.5</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="editor-actions">
+          <button type="submit" class="save">Guardar integraciones</button>
         </div>
       </form>
     </section>
@@ -642,14 +763,13 @@ $("tabs").addEventListener("click", (e) => {
   if (e.target.tagName !== "BUTTON") return;
   const tab = e.target.dataset.tab;
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b === e.target));
-  if (tab === "products") {
-    $("main").style.display = "none";
-    $("productsMain").classList.add("visible");
-    loadProductsFull();
-  } else {
-    $("main").style.display = "";
-    $("productsMain").classList.remove("visible");
-  }
+
+  $("main").style.display = tab === "chats" ? "" : "none";
+  $("productsMain").classList.toggle("visible", tab === "products");
+  $("integrationsMain").classList.toggle("visible", tab === "integrations");
+
+  if (tab === "products") loadProductsFull();
+  else if (tab === "integrations") loadIntegrations();
 });
 
 /* ── Productos: lista ── */
@@ -718,6 +838,9 @@ function openProductEditor(p) {
     $("pf_knowledge").value = "";
   }
 
+  toggleSourcesUI(!!p);
+  if (p) loadSources(p.id);
+
   renderProductList();
 }
 
@@ -730,6 +853,83 @@ function closeProductEditor() {
 }
 
 $("cancelProductBtn").addEventListener("click", closeProductEditor);
+
+/* ── Fuentes de conocimiento: archivos y links ── */
+function toggleSourcesUI(hasProduct) {
+  $("sourcesNote").style.display = hasProduct ? "none" : "block";
+  $("sourcesBlock").style.display = hasProduct ? "block" : "none";
+}
+
+async function loadSources(productId) {
+  try {
+    const list = await api(`/products/${productId}/sources`);
+    renderSources(list);
+  } catch {
+    renderSources([]);
+  }
+}
+
+function renderSources(list) {
+  $("sourcesList").innerHTML =
+    list
+      .map(
+        (s) => `
+    <div class="source-item" data-id="${s.id}">
+      <span class="stype">${s.type === "file" ? "📄" : "🔗"}</span>
+      <span class="sname" title="${esc(s.name)}">${esc(s.name)}</span>
+      <button type="button" class="source-remove" title="Eliminar">✕</button>
+    </div>`,
+      )
+      .join("") || '<div style="color:var(--ink-3);font-size:12.5px;padding:4px 0">Sin archivos ni links agregados.</div>';
+}
+
+$("sourcesList").addEventListener("click", async (e) => {
+  if (!e.target.classList.contains("source-remove") || !editingProduct) return;
+  const item = e.target.closest(".source-item");
+  try {
+    await api(`/products/${editingProduct.id}/sources/${item.dataset.id}`, { method: "DELETE" });
+    toast("Fuente eliminada");
+    loadSources(editingProduct.id);
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+$("sourceFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file || !editingProduct) return;
+  toast("Subiendo y procesando archivo…");
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`/api/products/${editingProduct.id}/sources/file`, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + TOKEN },
+      body: form,
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Error subiendo archivo");
+    toast("Archivo agregado ✅");
+    loadSources(editingProduct.id);
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+  e.target.value = "";
+});
+
+$("addSourceLinkBtn").addEventListener("click", async () => {
+  const url = $("sourceLinkInput").value.trim();
+  if (!url || !editingProduct) return;
+  toast("Leyendo el link…");
+  try {
+    await api(`/products/${editingProduct.id}/sources/link`, { method: "POST", body: JSON.stringify({ url }) });
+    $("sourceLinkInput").value = "";
+    toast("Link agregado ✅");
+    loadSources(editingProduct.id);
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
 
 /* ── Flujo inicial: render + edición ── */
 function renderFlowSteps() {
@@ -945,6 +1145,8 @@ $("productForm").addEventListener("submit", async (e) => {
 
     toast("Producto guardado ✅");
     editingProduct = saved.product;
+    toggleSourcesUI(true);
+    loadSources(saved.product.id);
     await loadProductsFull();
     products = await api("/products");
   } catch (err) {
@@ -961,6 +1163,66 @@ $("deleteProductBtn").addEventListener("click", async () => {
     closeProductEditor();
     await loadProductsFull();
     products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+/* ── Integraciones ── */
+async function loadIntegrations() {
+  try {
+    const s = await api("/integrations");
+    $("int_whatsappPhoneNumberId").value = s.whatsappPhoneNumberId?.value || "";
+    $("int_whatsappVerifyToken").value = s.whatsappVerifyToken?.value || "";
+    $("int_metaPixelId").value = s.metaPixelId?.value || "";
+    $("int_sheetsWebhookUrl").value = s.sheetsWebhookUrl?.value || "";
+    $("int_adminWhatsapp").value = s.adminWhatsapp?.value || "";
+    $("int_claudeModelChat").value = s.claudeModelChat?.value || "claude-haiku-4-5";
+    $("int_claudeModelReceipts").value = s.claudeModelReceipts?.value || "claude-opus-4-8";
+
+    // Los campos secretos nunca se rellenan — solo se muestra su estado
+    ["whatsappToken", "whatsappAppSecret", "metaAdsToken", "metaConversionsToken", "sheetsSecret"].forEach((key) => {
+      const badge = document.querySelector(`.int-status[data-key="${key}"]`);
+      if (!badge) return;
+      const info = s[key];
+      badge.textContent = info?.configured ? `✅ configurado (${info.preview})` : "○ sin configurar";
+      badge.className = "int-status " + (info?.configured ? "on" : "off");
+    });
+  } catch (err) {
+    toast("Error cargando integraciones: " + err.message);
+  }
+}
+
+$("integrationsForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const patch = {
+    whatsappPhoneNumberId: $("int_whatsappPhoneNumberId").value.trim(),
+    whatsappVerifyToken: $("int_whatsappVerifyToken").value.trim(),
+    metaPixelId: $("int_metaPixelId").value.trim(),
+    sheetsWebhookUrl: $("int_sheetsWebhookUrl").value.trim(),
+    adminWhatsapp: $("int_adminWhatsapp").value.trim(),
+    claudeModelChat: $("int_claudeModelChat").value,
+    claudeModelReceipts: $("int_claudeModelReceipts").value,
+  };
+  // Los secretos solo se envían si el usuario escribió algo nuevo
+  [
+    ["whatsappToken", "int_whatsappToken"],
+    ["whatsappAppSecret", "int_whatsappAppSecret"],
+    ["metaAdsToken", "int_metaAdsToken"],
+    ["metaConversionsToken", "int_metaConversionsToken"],
+    ["sheetsSecret", "int_sheetsSecret"],
+  ].forEach(([key, id]) => {
+    const val = $(id).value.trim();
+    if (val) patch[key] = val;
+  });
+
+  try {
+    await api("/integrations", { method: "PUT", body: JSON.stringify(patch) });
+    ["int_whatsappToken", "int_whatsappAppSecret", "int_metaAdsToken", "int_metaConversionsToken", "int_sheetsSecret"].forEach(
+      (id) => ($(id).value = ""),
+    );
+    toast("Integraciones guardadas ✅");
+    await loadIntegrations();
   } catch (err) {
     toast("Error: " + err.message);
   }
