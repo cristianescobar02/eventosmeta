@@ -2,6 +2,7 @@ import {
   catalog,
   matchProductByKeyword,
   getProduct,
+  getPaymentCombos,
   renderTemplate,
   normalizeFlowStep,
 } from "./config.js";
@@ -168,8 +169,20 @@ async function handleImage(contact, media) {
     save();
   }
 
+  // Guarda qué combinación pagó (base o base+complementos) para entregar los
+  // links correctos, incluso si pasa por revisión manual.
+  if (result.combo) {
+    contact.pendingCombo = {
+      amount: result.combo.amount,
+      label: result.combo.label,
+      driveLinks: result.combo.driveLinks,
+      upsells: result.combo.upsells.map((u) => ({ id: u.id, nombre: u.nombre })),
+    };
+    save();
+  }
+
   if (result.veredicto === "aprobado" && product) {
-    await deliverProduct(contact, product, { origen: "auto", medioPago: result.medio_pago });
+    await deliverProduct(contact, product, { origen: "auto", medioPago: result.medio_pago, combo: result.combo });
   } else if (result.veredicto === "rechazado") {
     addTag(contact, "comprobante_rechazado");
     const msg = result.es_comprobante
@@ -191,30 +204,59 @@ async function handleImage(contact, media) {
   }
 }
 
-/** Entrega el producto y etiqueta al cliente como comprador. */
+/** Entrega el producto (y complementos pagados) y etiqueta al cliente como comprador. */
 export async function deliverProduct(contact, product, extra = {}) {
+  // La combinación decide qué links se entregan: la que se detectó al validar,
+  // o la que quedó pendiente para aprobación manual, o solo el producto base.
+  const combos = getPaymentCombos(product);
+  const combo = extra.combo || contact.pendingCombo || combos[0];
+  const driveLinks =
+    combo?.driveLinks?.length ? combo.driveLinks : product.driveLink ? [product.driveLink] : [];
+  const upsells = combo?.upsells || [];
+
   contact.stage = "comprador";
   addTag(contact, "comprador");
   addTag(contact, `comprador:${product.id}`);
+  for (const u of upsells) addTag(contact, `upsell:${u.id}`);
+  contact.purchase = {
+    productId: product.id,
+    amount: combo?.amount ?? product.precio,
+    label: combo?.label || product.nombre,
+    upsells: upsells.map((u) => u.nombre),
+    ts: Date.now(),
+  };
+  delete contact.pendingCombo;
   save();
 
   logSale(contact, product, {
     origen: extra.origen || "manual",
     medioPago: extra.medioPago || contact.lastReceipt?.medio || "",
+    total: combo?.amount ?? product.precio,
+    upsells: upsells.map((u) => u.nombre),
   });
-  sendPurchaseEvent(contact, product).catch(() => {});
+  sendPurchaseEvent(contact, product, combo?.amount).catch(() => {});
+
+  // Arma el mensaje de entrega con todos los accesos comprados
+  const items = [];
+  if (product.driveLink) items.push(`• *${product.nombre}*:\n${product.driveLink}`);
+  for (const u of upsells) {
+    const link = product.upsells?.find((x) => x.id === u.id)?.driveLink;
+    if (link) items.push(`• *${u.nombre}*:\n${link}`);
+  }
+  const accesos = items.length ? items.join("\n\n") : driveLinks.join("\n");
 
   const msg = `✅ ¡Pago confirmado! Muchas gracias por tu compra 🎉
 
-Aquí tienes tu acceso al *${product.nombre}*:
-${product.driveLink}
+Aquí tienes tu acceso:
 
-Guarda este enlace. Si tienes cualquier problema para entrar, escríbeme por aquí y te ayudo de inmediato 🙌`;
+${accesos}
+
+Guarda estos enlaces. Si tienes cualquier problema para entrar, escríbeme por aquí y te ayudo de inmediato 🙌`;
 
   await sendText(contact.phone, msg);
   contact.lastOutboundAt = Date.now();
   pushHistory(contact, "assistant", msg);
-  await notifyAdmin(contact, null, `💰 VENTA CONFIRMADA — ${product.nombre}`);
+  await notifyAdmin(contact, null, `💰 VENTA CONFIRMADA — ${combo?.label || product.nombre}`);
 }
 
 async function notifyAdmin(contact, result, label) {

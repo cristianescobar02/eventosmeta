@@ -22,7 +22,7 @@
 var SECRET = "cambia-esta-clave";
 
 var HEADERS_VENTAS = [
-  "Fecha", "Nombre", "Teléfono", "Pagó", "Método de pago",
+  "Fecha", "Nombre", "Teléfono", "Pagó", "Complementos", "Método de pago",
   "Ad (ID)", "Ad (titular)", "Ad (texto)", "Ad (nombre)", "Conjunto de anuncios", "Campaña",
   "Keyword", "Aprobación", "Seguimientos", "Mensajes", "Horas hasta compra"
 ];
@@ -77,7 +77,7 @@ function getSheet(name, headers) {
 function registrarVenta(d) {
   var sheet = getSheet("VENTAS — " + d.producto, HEADERS_VENTAS);
   sheet.appendRow([
-    d.fecha, d.nombre, "+" + d.telefono, d.pago, d.metodoPago,
+    d.fecha, d.nombre, "+" + d.telefono, d.pago, d.complementos || "", d.metodoPago,
     d.adId, d.adTitular, d.adTexto, d.nombreAd, d.conjuntoAnuncios, d.campana,
     d.keyword, d.aprobacion, d.seguimientos, d.mensajes, d.horasHastaCompra
   ]);

@@ -23,10 +23,25 @@ function buildSystemPrompt(contact) {
   let focus = "";
   if (product) {
     const knowledge = loadKnowledge(product.id);
+    const upsells = Array.isArray(product.upsells) ? product.upsells : [];
+    const upsellBlock = upsells.length
+      ? `\n## Complementos opcionales (upsell) que puedes ofrecer
+Este producto tiene complementos que el cliente puede agregar por un valor adicional:
+${upsells
+  .map(
+    (u) =>
+      `- ${u.nombre}: ${u.precioTexto || "+$" + Number(u.precio).toLocaleString("es-CO")} adicionales (total quedaría en $${(
+        Number(product.precio) + Number(u.precio)
+      ).toLocaleString("es-CO")})`,
+  )
+  .join("\n")}
+Ofrécelos de forma natural cuando el cliente muestre interés o pida cómo pagar, sin presionar. Ejemplo: "Puedes llevar solo el ${product.nombre} por ${product.precioTexto}, o llevártelo con [complemento] por un total de $X. ¿Cuál prefieres?". El cliente paga el monto según lo que elija y el sistema le entrega lo correspondiente.`
+      : "";
     focus = `
 ## Producto que le interesa a este cliente
 Nombre: ${product.nombre}
 Precio: ${product.precioTexto} (pago único)
+${upsellBlock}
 ${knowledge ? `\n## Base de conocimiento del producto (usa SOLO esta información para responder preguntas del producto)\n${knowledge}` : ""}`;
 
     if (product.ocultarPreciosReferencia) {

@@ -110,6 +110,37 @@ export function getProduct(id) {
   return catalog.productos.find((p) => p.id === id) || null;
 }
 
+/**
+ * Devuelve las combinaciones de pago válidas de un producto: el precio base
+ * solo, y el base + cada subconjunto de complementos (upsells). Cada combo:
+ *   { amount, upsells: [{id,nombre,precio,driveLink}], driveLinks: [...], label }
+ *
+ * Ej.: base APU $24.100 + complemento Cotizador +$11.000 →
+ *   [{amount:24100, ...base}, {amount:35100, ...base+cotizador}]
+ */
+export function getPaymentCombos(product) {
+  const upsells = Array.isArray(product.upsells) ? product.upsells : [];
+  const n = upsells.length;
+  const combos = [];
+  for (let mask = 0; mask < 1 << n; mask++) {
+    const sel = [];
+    let amount = Number(product.precio) || 0;
+    const driveLinks = product.driveLink ? [product.driveLink] : [];
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) {
+        sel.push(upsells[i]);
+        amount += Number(upsells[i].precio) || 0;
+        if (upsells[i].driveLink) driveLinks.push(upsells[i].driveLink);
+      }
+    }
+    const label = sel.length
+      ? `${product.nombre} + ${sel.map((u) => u.nombre).join(" + ")}`
+      : product.nombre;
+    combos.push({ amount, upsells: sel, driveLinks, label });
+  }
+  return combos;
+}
+
 /** Reemplaza variables {negocio}, {producto}, {precio} en las plantillas. */
 export function renderTemplate(text, product) {
   return String(text)

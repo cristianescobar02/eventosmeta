@@ -397,6 +397,14 @@
           </span>
         </label>
 
+        <div class="section-title">Complementos / Upsell (opcional)
+          <button type="button" class="add" id="addUpsellBtn">+ agregar complemento</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-2);margin:-4px 0 8px">
+          Productos adicionales que el cliente puede sumar por un valor extra. El bot los ofrece en la conversación, y al validar el comprobante entrega el link según el monto pagado (base, o base + complementos). Ej: base $24.100 → link base; base + Cotizador (+$11.000) = $35.100 → ambos links.
+        </div>
+        <div id="upsellSteps"></div>
+
         <div class="section-title">Flujo inicial (mensajes de bienvenida)
           <button type="button" class="add" id="addFlowStepBtn">+ agregar paso</button>
         </div>
@@ -438,6 +446,32 @@
 
   <div id="integrationsMain">
     <section id="integrationsPane">
+      <h2 style="font-size:15px;margin-bottom:4px">Negocio y métodos de pago</h2>
+      <p class="hint">El bot envía estos métodos de pago al cliente, y usa el <b>titular de la cuenta</b> para validar que el comprobante tenga el destinatario correcto.</p>
+      <form id="paymentForm" style="margin-bottom:26px">
+        <div class="field-row">
+          <div class="field">
+            <label>Nombre del negocio</label>
+            <input type="text" id="bz_nombre" />
+          </div>
+          <div class="field">
+            <label>Tu nombre (vendedor)</label>
+            <input type="text" id="bz_vendedor" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Titular de la cuenta (el nombre que debe aparecer como destinatario en los comprobantes)</label>
+          <input type="text" id="bz_titular" placeholder="Cristian Escobar" />
+        </div>
+        <div class="section-title">Métodos de pago
+          <button type="button" class="add" id="addPayMethodBtn">+ agregar método</button>
+        </div>
+        <div id="payMethods"></div>
+        <div class="editor-actions">
+          <button type="submit" class="save">Guardar negocio y pagos</button>
+        </div>
+      </form>
+
       <h2 style="font-size:15px;margin-bottom:4px">Integraciones</h2>
       <p class="hint">Conecta o actualiza tus credenciales sin tocar Railway. Los campos de token/clave nunca muestran el valor completo por seguridad — solo indican si ya están configurados. Deja un campo en blanco para no cambiarlo.</p>
       <form id="integrationsForm">
@@ -533,6 +567,7 @@ let allProducts = [];      // catálogo completo para la pestaña Productos
 let editingProduct = null; // producto en edición (null = creando uno nuevo)
 let currentFlow = [];      // pasos del flujo inicial en edición
 let currentRemarketing = []; // pasos de remarketing en edición
+let currentUpsells = [];   // complementos (upsell) en edición
 
 function toast(msg) {
   const t = $("toast");
@@ -826,8 +861,10 @@ function openProductEditor(p) {
 
   currentFlow = (p?.flujoInicio || []).map(normalizeStepForEdit);
   currentRemarketing = (p?.remarketing || []).map((s) => ({ ...s }));
+  currentUpsells = (p?.upsells || []).map((u) => ({ ...u }));
   renderFlowSteps();
   renderRemarketingSteps();
+  renderUpsells();
 
   if (p) {
     $("pf_knowledge").value = "Cargando…";
@@ -853,6 +890,65 @@ function closeProductEditor() {
 }
 
 $("cancelProductBtn").addEventListener("click", closeProductEditor);
+
+/* ── Complementos / Upsell ── */
+function renderUpsells() {
+  const base = Number($("pf_precio").value) || 0;
+  $("upsellSteps").innerHTML =
+    currentUpsells
+      .map((u, i) => {
+        const total = base + (Number(u.precio) || 0);
+        return `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <input type="text" class="up-nombre" style="flex:1" value="${esc(u.nombre || "")}" placeholder="Nombre del complemento (ej: Cotizador de obra)" />
+        <button type="button" class="icon danger up-remove" title="Eliminar">✕</button>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Precio adicional (número)</label>
+          <input type="number" class="up-precio" min="1" value="${u.precio ?? ""}" placeholder="11000" />
+        </div>
+        <div class="field">
+          <label>Total a pagar si lo lleva</label>
+          <input type="text" value="$${total.toLocaleString("es-CO")}" disabled style="opacity:.7" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Link de Google Drive de ESTE complemento</label>
+        <input type="text" class="up-link" value="${esc(u.driveLink || "")}" placeholder="https://drive.google.com/..." />
+      </div>
+    </div>`;
+      })
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:4px 0 8px">Sin complementos. El producto se vende solo a su precio base.</div>';
+}
+
+$("addUpsellBtn").addEventListener("click", () => {
+  currentUpsells.push({ nombre: "", precio: "", driveLink: "" });
+  renderUpsells();
+});
+
+$("upsellSteps").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  if (e.target.classList.contains("up-remove")) {
+    currentUpsells.splice(Number(card.dataset.i), 1);
+    renderUpsells();
+  }
+});
+
+$("upsellSteps").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("up-nombre")) currentUpsells[i].nombre = e.target.value;
+  else if (e.target.classList.contains("up-precio")) { currentUpsells[i].precio = e.target.value; renderUpsells(); }
+  else if (e.target.classList.contains("up-link")) currentUpsells[i].driveLink = e.target.value;
+});
+
+// Recalcula los totales de complementos cuando cambia el precio base
+$("pf_precio").addEventListener("input", () => { if (currentUpsells.length) renderUpsells(); });
 
 /* ── Fuentes de conocimiento: archivos y links ── */
 function toggleSourcesUI(hasProduct) {
@@ -1120,6 +1216,9 @@ $("productForm").addEventListener("submit", async (e) => {
     precioTexto: $("pf_precioTexto").value.trim(),
     driveLink: $("pf_driveLink").value.trim(),
     ocultarPreciosReferencia: $("pf_ocultarPrecios").checked,
+    upsells: currentUpsells
+      .filter((u) => String(u.nombre || "").trim())
+      .map((u) => ({ nombre: String(u.nombre).trim(), precio: Number(u.precio), driveLink: String(u.driveLink || "").trim() })),
     flujoInicio: currentFlow.map((s) =>
       s.type === "text"
         ? { type: "text", text: s.text || "" }
@@ -1168,8 +1267,85 @@ $("deleteProductBtn").addEventListener("click", async () => {
   }
 });
 
+/* ── Negocio y métodos de pago ── */
+let currentPayMethods = [];
+
+function renderPayMethods() {
+  $("payMethods").innerHTML =
+    currentPayMethods
+      .map(
+        (m, i) => `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <input type="text" class="pm-nombre" style="width:140px" value="${esc(m.nombre || "")}" placeholder="Nequi" />
+        <input type="text" class="pm-datos" style="flex:1" value="${esc(m.datos || "")}" placeholder="310 000 0000 — a nombre de..." />
+        <button type="button" class="icon danger pm-remove" title="Eliminar">✕</button>
+      </div>
+    </div>`,
+      )
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:4px 0 8px">Sin métodos de pago. Agrega al menos uno.</div>';
+}
+
+$("addPayMethodBtn").addEventListener("click", () => {
+  currentPayMethods.push({ nombre: "", datos: "" });
+  renderPayMethods();
+});
+
+$("payMethods").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  if (e.target.classList.contains("pm-remove")) {
+    currentPayMethods.splice(Number(card.dataset.i), 1);
+    renderPayMethods();
+  }
+});
+
+$("payMethods").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("pm-nombre")) currentPayMethods[i].nombre = e.target.value;
+  else if (e.target.classList.contains("pm-datos")) currentPayMethods[i].datos = e.target.value;
+});
+
+async function loadBusiness() {
+  try {
+    const s = await api("/settings");
+    $("bz_nombre").value = s.negocio?.nombre || "";
+    $("bz_vendedor").value = s.negocio?.vendedor || "";
+    $("bz_titular").value = s.titularCuenta || "";
+    currentPayMethods = (s.metodosPago || []).map((m) => ({ ...m }));
+    renderPayMethods();
+  } catch (err) {
+    toast("Error cargando negocio: " + err.message);
+  }
+}
+
+$("paymentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const metodos = currentPayMethods
+    .filter((m) => String(m.nombre || "").trim() && String(m.datos || "").trim())
+    .map((m) => ({ nombre: m.nombre.trim(), datos: m.datos.trim() }));
+  try {
+    await api("/settings", {
+      method: "PUT",
+      body: JSON.stringify({
+        negocio: { nombre: $("bz_nombre").value.trim(), vendedor: $("bz_vendedor").value.trim() },
+        titularCuenta: $("bz_titular").value.trim(),
+        metodosPago: metodos,
+      }),
+    });
+    toast("Negocio y pagos guardados ✅");
+    products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
 /* ── Integraciones ── */
 async function loadIntegrations() {
+  await loadBusiness();
   try {
     const s = await api("/integrations");
     $("int_whatsappPhoneNumberId").value = s.whatsappPhoneNumberId?.value || "";

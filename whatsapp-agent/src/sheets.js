@@ -59,13 +59,15 @@ export function logSale(contact, product, extra = {}) {
   const horas = contact.createdAt
     ? Math.round(((Date.now() - contact.createdAt) / 3600000) * 10) / 10
     : "";
+  const upsells = extra.upsells || [];
   return post({
     tipo: "venta",
     fecha: fechaLocal(),
     nombre: contact.name || "",
     telefono: contact.phone,
     producto: product.nombre,
-    pago: product.precio,
+    complementos: upsells.join(", "),
+    pago: extra.total ?? product.precio,
     moneda: catalog.negocio.moneda,
     metodoPago: extra.medioPago || "",
     aprobacion: extra.origen || "auto", // "auto" | "manual"

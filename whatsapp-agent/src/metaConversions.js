@@ -22,7 +22,7 @@ function sha256(value) {
  * este archivo según su documentación vigente de "Conversions API for
  * click-to-WhatsApp ads".
  */
-export async function sendPurchaseEvent(contact, product) {
+export async function sendPurchaseEvent(contact, product, amount) {
   const pixelId = getSetting("metaPixelId");
   const token = getSetting("metaConversionsToken");
   const ctwaClid = contact.referral?.ctwaClid;
@@ -45,7 +45,7 @@ export async function sendPurchaseEvent(contact, product) {
             },
             custom_data: {
               currency: "COP",
-              value: product.precio,
+              value: amount ?? product.precio,
             },
           },
         ],

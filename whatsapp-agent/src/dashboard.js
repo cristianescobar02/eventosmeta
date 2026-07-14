@@ -205,7 +205,26 @@ export function mountDashboard(app) {
     if (!precioTexto) return "El precio en texto es obligatorio (ej: $49.900 COP)";
     if (!driveLink) return "El link de Google Drive es obligatorio";
     if (!keywords.length) return "Agrega al menos una palabra clave";
+    if (Array.isArray(body.upsells)) {
+      for (const u of body.upsells) {
+        if (!String(u.nombre || "").trim()) return "Cada complemento necesita un nombre";
+        if (!(Number(u.precio) > 0)) return "Cada complemento necesita un precio adicional mayor a 0";
+        if (!String(u.driveLink || "").trim()) return "Cada complemento necesita su link de Google Drive";
+      }
+    }
     return null;
+  }
+
+  // Normaliza los complementos (upsells) con un id estable por complemento.
+  function sanitizeUpsells(list, existing = []) {
+    if (!Array.isArray(list)) return [];
+    return list.map((u, i) => ({
+      id: existing[i]?.id || u.id || slugify(u.nombre) || `upsell-${i + 1}`,
+      nombre: String(u.nombre).trim(),
+      precio: Number(u.precio),
+      precioTexto: String(u.precioTexto || `+$${Number(u.precio).toLocaleString("es-CO")}`).trim(),
+      driveLink: String(u.driveLink).trim(),
+    }));
   }
 
   api.post("/products", (req, res) => {
@@ -221,6 +240,7 @@ export function mountDashboard(app) {
       precioTexto: String(req.body.precioTexto).trim(),
       driveLink: String(req.body.driveLink).trim(),
       ocultarPreciosReferencia: !!req.body.ocultarPreciosReferencia,
+      upsells: sanitizeUpsells(req.body.upsells),
       flujoInicio: Array.isArray(req.body.flujoInicio) ? req.body.flujoInicio : [],
       remarketing: Array.isArray(req.body.remarketing) ? req.body.remarketing : [],
     };
@@ -243,6 +263,7 @@ export function mountDashboard(app) {
       precioTexto: String(req.body.precioTexto).trim(),
       driveLink: String(req.body.driveLink).trim(),
       ocultarPreciosReferencia: !!req.body.ocultarPreciosReferencia,
+      upsells: sanitizeUpsells(req.body.upsells, catalog.productos[idx].upsells),
       flujoInicio: Array.isArray(req.body.flujoInicio) ? req.body.flujoInicio : [],
       remarketing: Array.isArray(req.body.remarketing) ? req.body.remarketing : [],
     };
@@ -269,7 +290,8 @@ export function mountDashboard(app) {
     const { negocio, metodosPago, titularCuenta } = req.body || {};
     saveCatalog({
       ...catalog,
-      negocio: negocio || catalog.negocio,
+      // Merge para no perder campos como moneda/descripcion que no vienen del panel
+      negocio: negocio ? { ...catalog.negocio, ...negocio } : catalog.negocio,
       metodosPago: Array.isArray(metodosPago) ? metodosPago : catalog.metodosPago,
       titularCuenta: titularCuenta ?? catalog.titularCuenta,
     });
