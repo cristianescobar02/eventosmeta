@@ -4,6 +4,7 @@ import { env } from "./config.js";
 import { handleIncomingMessage, handleAdminCommand } from "./router.js";
 import { startRemarketingScheduler } from "./remarketing.js";
 import { mountDashboard } from "./dashboard.js";
+import { startQualityScheduler } from "./quality.js";
 
 const app = express();
 
@@ -88,4 +89,5 @@ app.listen(env.PORT, () => {
   console.log(`   Webhook: POST /webhook  |  Verificación: GET /webhook`);
   console.log(`   Panel de control: http://localhost:${env.PORT}/admin`);
   startRemarketingScheduler();
+  startQualityScheduler();
 });

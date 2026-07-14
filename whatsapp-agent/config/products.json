@@ -35,28 +35,24 @@
       ],
       "remarketing": [
         {
-          "horas": 4,
+          "horas": 5,
           "mensaje": "¡Hola de nuevo! 👋 Vi que estabas interesado en el *{producto}* y quería saber si te quedó alguna duda. Estoy aquí para ayudarte 😊"
         },
         {
-          "horas": 12,
-          "mensaje": "Recuerda que el *{producto}* está en *{precio}* con acceso inmediato. Muchas personas ya están viendo resultados 📈 ¿Te animas?"
-        },
-        {
-          "horas": 22,
-          "mensaje": "⏰ Última oportunidad de escribirme por este chat: después de hoy no podré contactarte de nuevo por aquí. Si quieres asegurar el *{producto}* en *{precio}*, este es el momento. ¿Te envío los métodos de pago?"
+          "horas": 20,
+          "mensaje": "Antes de que se cierre este chat, quería confirmar si sigues interesado en el *{producto}* o si hay algo que te esté deteniendo. Con gusto te resuelvo cualquier duda 🙂"
         }
       ]
     }
   ],
   "remarketingGeneral": [
     {
-      "horas": 4,
+      "horas": 5,
       "mensaje": "¡Hola! 👋 Quedé pendiente de ti. ¿Te gustaría que te cuente más sobre nuestros productos digitales?"
     },
     {
-      "horas": 22,
-      "mensaje": "⏰ Este chat se cierra pronto y no podré escribirte de nuevo por aquí. Si tienes alguna duda o quieres aprovechar alguno de nuestros productos, escríbeme ahora 😊"
+      "horas": 20,
+      "mensaje": "Antes de que se cierre este chat, quería saber si tienes alguna duda o si te gustaría conocer más sobre nuestros productos 🙂"
     }
   ]
 }

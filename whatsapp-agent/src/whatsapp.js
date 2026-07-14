@@ -61,6 +61,17 @@ export async function downloadMedia(mediaId) {
   return { buffer, mimeType: meta.mime_type || "image/jpeg" };
 }
 
+/** Consulta la calidad y el límite de mensajería del número (para detectar riesgo de bloqueo). */
+export async function getPhoneNumberQuality() {
+  const data = await graphRequest(
+    `/${env.WHATSAPP_PHONE_NUMBER_ID}?fields=quality_rating,messaging_limit_tier`,
+  );
+  return {
+    quality: data.quality_rating || "UNKNOWN", // GREEN | YELLOW | RED | UNKNOWN
+    limitTier: data.messaging_limit_tier || "UNKNOWN",
+  };
+}
+
 /** Envía una secuencia de mensajes con una pequeña pausa entre cada uno. */
 export async function sendSequence(to, messages, delayMs = 1500) {
   for (const msg of messages) {

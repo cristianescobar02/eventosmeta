@@ -120,7 +120,20 @@ APROBAR 573001234567
 > - La verificación definitiva siempre es **ver el dinero en tu cuenta**.
 > - Considera migrar a un link de pago con confirmación automática (Wompi, Mercado Pago, PayU) cuando el volumen lo justifique.
 
+## Monitoreo automático de riesgo de bloqueo (Quality Rating)
+
+Meta le asigna a tu número una **calidad** (🟢 Verde / 🟡 Amarilla / 🔴 Roja) según cuánta gente te bloquea o reporta. Si baja, te reduce cuántas conversaciones nuevas puedes iniciar por día, y en casos extremos puede restringir el número.
+
+El bot consulta esto automáticamente cada 6 horas y **te avisa a tu `ADMIN_WHATSAPP`** si:
+- Tu calidad empeoró respecto al último chequeo, o
+- Está en Amarilla o Roja (sin repetir la misma alerta antes de 24h).
+
+Si te llega esa alerta, la recomendación inmediata es **reducir la frecuencia del remarketing** unos días hasta que la calidad se recupere — el remarketing agresivo hacia quienes ya no quieren comprar es la causa más común de bloqueos.
+
 ## Cómo funciona el remarketing
+
+Los mensajes de seguimiento vienen configurados de forma moderada por defecto: **2 mensajes** por contacto (uno a las ~5h, otro a las ~20h), con tono informativo en vez de urgencia agresiva — esto reduce el riesgo de que te bloqueen o reporten como spam a gran escala. Puedes ajustar horas y mensajes en `config/products.json` → `remarketing` / `remarketingGeneral`.
+
 
 - Cada mensaje del cliente reabre la ventana de 24h y reinicia la secuencia de seguimiento.
 - El scheduler revisa cada minuto qué contactos **no etiquetados como `comprador`** tienen mensajes pendientes y los envía en los horarios configurados.
@@ -171,6 +184,7 @@ whatsapp-agent/
 │   ├── agent.js         # Cerrador de ventas con Claude + base de conocimiento
 │   ├── receipts.js      # Validación de comprobantes con visión (JSON estructurado)
 │   ├── remarketing.js   # Seguimientos antes del cierre de la ventana de 24h
+│   ├── quality.js       # Monitoreo del Quality Rating (riesgo de bloqueo)
 │   ├── sheets.js        # Registro de leads/ventas en Google Sheets
 │   ├── whatsapp.js      # Cliente de la Cloud API (enviar, marcar leído, descargar media)
 │   ├── db.js            # Persistencia simple en JSON (contactos, tags, historial)

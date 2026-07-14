@@ -90,3 +90,13 @@ export function pushHistory(contact, role, content) {
 export function allContacts() {
   return Object.values(data.contacts);
 }
+
+/** Última calidad de número conocida: { quality, limitTier, checkedAt } */
+export function getQualityState() {
+  return data.quality || null;
+}
+
+export function setQualityState(state) {
+  data.quality = { ...state, checkedAt: Date.now() };
+  save();
+}
