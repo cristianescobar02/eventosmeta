@@ -47,14 +47,21 @@ para el remarketing). Cuesta ~5 USD/mes tras el crédito de prueba.
    | `WHATSAPP_TOKEN` | *(vacío por ahora — Fase 3)* |
    | `WHATSAPP_PHONE_NUMBER_ID` | *(vacío por ahora — Fase 3)* |
    | `ADMIN_WHATSAPP` | tu número con código de país, ej. `573001112233` |
+   | `DATA_DIR` | `/data` *(dónde se guarda todo lo que generas en vivo)* |
 
 5. Ve a **Settings → Networking → Generate Domain**. Railway te da una URL
    pública, ej. `https://eventosmeta-production.up.railway.app`. **Cópiala.**
-6. **(Muy recomendado) Settings → Volumes → Add Volume**, punto de montaje
-   `/app/whatsapp-agent/data`. Esto conserva contactos, historial **y todo lo
-   que configures desde la pestaña Integraciones del panel** entre reinicios
-   (sin el volumen, un redeploy borra esa configuración y hay que volver a
-   ponerla). Las ventas igual se guardan en Google Sheets aunque no lo hagas.
+6. **(IMPORTANTE) Settings → Volumes → Add Volume**, punto de montaje **`/data`**
+   (el mismo valor que pusiste en la variable `DATA_DIR`). Este volumen conserva
+   **todo lo que generas en vivo**: contactos, historial, los productos y la
+   base de conocimiento que edites desde el panel, y la configuración de la
+   pestaña Integraciones. **Sin este volumen, cada redeploy borra todo eso** y
+   tendrías que volver a crearlo. Las ventas igual quedan en Google Sheets, pero
+   no te saltes este paso: es lo que hace que tu configuración sea permanente.
+
+   > El bot siembra automáticamente el producto de ejemplo la primera vez. Al
+   > montar el volumen vacío, arranca con ese ejemplo; luego todo lo que crees
+   > queda guardado en el volumen.
 
 Tu bot ya está en línea. La URL del webhook será: **`<tu-URL-de-Railway>/webhook`**
 

@@ -31,7 +31,33 @@ if (missing.length) {
   console.warn(`⚠️  Faltan variables de entorno: ${missing.join(", ")} (revisa tu .env)`);
 }
 
-const CATALOG_FILE = path.join(ROOT, "config", "products.json");
+/**
+ * Carpeta única para TODO lo que se genera en vivo (contactos, ajustes,
+ * productos editados desde el panel y su base de conocimiento). Montar un solo
+ * volumen persistente aquí conserva todo entre redeploys.
+ *
+ * Configurable con la variable DATA_DIR (recomendado en Railway: DATA_DIR=/data
+ * + volumen montado en /data). Por defecto es <proyecto>/data.
+ *
+ * En el primer arranque con la carpeta vacía, se siembra con los valores de
+ * ejemplo que vienen en el repositorio (config/products.json y knowledge/).
+ */
+export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, "data");
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+export const KNOWLEDGE_DIR = path.join(DATA_DIR, "knowledge");
+
+const CATALOG_SEED = path.join(ROOT, "config", "products.json");
+const CATALOG_FILE = path.join(DATA_DIR, "products.json");
+const KNOWLEDGE_SEED = path.join(ROOT, "knowledge");
+
+// Sembrado de primer arranque (solo si la carpeta persistente está vacía)
+if (!fs.existsSync(CATALOG_FILE) && fs.existsSync(CATALOG_SEED)) {
+  fs.copyFileSync(CATALOG_SEED, CATALOG_FILE);
+}
+if (!fs.existsSync(KNOWLEDGE_DIR) && fs.existsSync(KNOWLEDGE_SEED)) {
+  fs.cpSync(KNOWLEDGE_SEED, KNOWLEDGE_DIR, { recursive: true });
+}
 
 function loadCatalog() {
   return JSON.parse(fs.readFileSync(CATALOG_FILE, "utf8"));
@@ -94,7 +120,7 @@ export function renderTemplate(text, product) {
 
 /** Carga la base de conocimiento (archivos .md/.txt + fuentes subidas) de un producto. */
 export function loadKnowledge(productId) {
-  const dir = path.join(ROOT, "knowledge", productId);
+  const dir = path.join(KNOWLEDGE_DIR, productId);
   const parts = [];
 
   if (fs.existsSync(dir)) {
@@ -118,20 +144,20 @@ const SOURCES_INDEX_FILE = "sources.json";
 
 /** Lee el archivo principal de conocimiento que edita el dashboard (uno solo, texto plano). */
 export function loadKnowledgeMain(productId) {
-  const file = path.join(ROOT, "knowledge", productId, KNOWLEDGE_MAIN_FILE);
+  const file = path.join(KNOWLEDGE_DIR, productId, KNOWLEDGE_MAIN_FILE);
   if (!fs.existsSync(file)) return "";
   return fs.readFileSync(file, "utf8");
 }
 
 /** Guarda el archivo principal de conocimiento del producto (crea la carpeta si no existe). */
 export function saveKnowledgeMain(productId, content) {
-  const dir = path.join(ROOT, "knowledge", productId);
+  const dir = path.join(KNOWLEDGE_DIR, productId);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, KNOWLEDGE_MAIN_FILE), content ?? "");
 }
 
 function sourcesDir(productId) {
-  return path.join(ROOT, "knowledge", productId, "sources");
+  return path.join(KNOWLEDGE_DIR, productId, "sources");
 }
 
 function sourcesIndexFile(productId) {

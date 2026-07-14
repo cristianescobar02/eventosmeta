@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, env } from "./config.js";
+import { DATA_DIR, env } from "./config.js";
 
-const DATA_DIR = path.join(ROOT, "data");
 const FILE = path.join(DATA_DIR, "settings.json");
 
 /**

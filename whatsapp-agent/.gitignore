@@ -1,4 +1,5 @@
 node_modules/
 .env
-data/db.json
-data/db.json.tmp
+# Datos generados en vivo (contactos, ajustes, productos y conocimiento
+# editados desde el panel). No se suben: son estado del servidor, no del repo.
+data/

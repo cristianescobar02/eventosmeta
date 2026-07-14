@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT } from "./config.js";
+import { DATA_DIR } from "./config.js";
 
-const DATA_DIR = path.join(ROOT, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 let data = { contacts: {} };
