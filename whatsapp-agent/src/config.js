@@ -30,15 +30,16 @@ if (missing.length) {
   console.warn(`⚠️  Faltan variables de entorno: ${missing.join(", ")} (revisa tu .env)`);
 }
 
+const CATALOG_FILE = path.join(ROOT, "config", "products.json");
+
 function loadCatalog() {
-  const file = path.join(ROOT, "config", "products.json");
-  return JSON.parse(fs.readFileSync(file, "utf8"));
+  return JSON.parse(fs.readFileSync(CATALOG_FILE, "utf8"));
 }
 
 export let catalog = loadCatalog();
 
-// Recarga el catálogo si editas products.json sin reiniciar el servidor
-fs.watchFile(path.join(ROOT, "config", "products.json"), { interval: 5000 }, () => {
+// Recarga el catálogo si editas products.json a mano sin reiniciar el servidor
+fs.watchFile(CATALOG_FILE, { interval: 5000 }, () => {
   try {
     catalog = loadCatalog();
     console.log("🔄 Catálogo de productos recargado");
@@ -46,6 +47,17 @@ fs.watchFile(path.join(ROOT, "config", "products.json"), { interval: 5000 }, () 
     console.error("Error recargando products.json:", err.message);
   }
 });
+
+/**
+ * Guarda el catálogo completo de forma atómica y actualiza la copia en
+ * memoria al instante (el dashboard no tiene que esperar el watchFile).
+ */
+export function saveCatalog(newCatalog) {
+  const tmp = CATALOG_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(newCatalog, null, 2));
+  fs.renameSync(tmp, CATALOG_FILE);
+  catalog = newCatalog;
+}
 
 function normalize(text) {
   return String(text || "")
@@ -90,4 +102,29 @@ export function loadKnowledge(productId) {
     if (content) parts.push(`--- ${file} ---\n${content}`);
   }
   return parts.join("\n\n");
+}
+
+const KNOWLEDGE_MAIN_FILE = "info.md";
+
+/** Lee el archivo principal de conocimiento que edita el dashboard (uno solo, texto plano). */
+export function loadKnowledgeMain(productId) {
+  const file = path.join(ROOT, "knowledge", productId, KNOWLEDGE_MAIN_FILE);
+  if (!fs.existsSync(file)) return "";
+  return fs.readFileSync(file, "utf8");
+}
+
+/** Guarda el archivo principal de conocimiento del producto (crea la carpeta si no existe). */
+export function saveKnowledgeMain(productId, content) {
+  const dir = path.join(ROOT, "knowledge", productId);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, KNOWLEDGE_MAIN_FILE), content ?? "");
+}
+
+/**
+ * Normaliza un paso del flujo inicial a { type, text?, mediaId?, caption? }.
+ * Acepta el formato viejo (string = texto plano) por compatibilidad.
+ */
+export function normalizeFlowStep(step) {
+  if (typeof step === "string") return { type: "text", text: step };
+  return step;
 }

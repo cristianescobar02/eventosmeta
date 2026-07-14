@@ -1,5 +1,12 @@
 import { catalog, getProduct, renderTemplate } from "./config.js";
 import { allContacts, hasTag, save, pushHistory } from "./db.js";
+
+/** true si el contacto cumple las condiciones de etiqueta del paso (si las tiene). */
+function meetsCondition(contact, step) {
+  if (step.etiquetaRequerida && !hasTag(contact, step.etiquetaRequerida)) return false;
+  if (step.etiquetaExcluida && hasTag(contact, step.etiquetaExcluida)) return false;
+  return true;
+}
 import { sendText } from "./whatsapp.js";
 
 const HOUR = 60 * 60 * 1000;
@@ -13,8 +20,9 @@ const WINDOW_LIMIT = 23.5 * HOUR;
  * ventana de 24 horas de WhatsApp.
  *
  * Cada producto define sus mensajes en products.json → remarketing:
- *   [{ horas: 4, mensaje: "..." }, { horas: 22, mensaje: "..." }]
- * Los contactos sin producto usan remarketingGeneral.
+ *   [{ horas: 4, mensaje: "...", etiquetaRequerida?: "x", etiquetaExcluida?: "y" }]
+ * Los contactos sin producto usan remarketingGeneral. Un paso solo se envía
+ * si el contacto cumple sus condiciones de etiqueta (cuando las tiene).
  */
 export async function runRemarketingTick() {
   const now = Date.now();
@@ -37,7 +45,11 @@ export async function runRemarketingTick() {
       for (let i = 0; i < schedule.length; i++) {
         const step = schedule[i];
         const due = step.horas * HOUR;
-        if (elapsed >= due && !contact.followupsSent.includes(i)) {
+        if (
+          elapsed >= due &&
+          !contact.followupsSent.includes(i) &&
+          meetsCondition(contact, step)
+        ) {
           const msg = renderTemplate(step.mensaje, product);
           await sendText(contact.phone, msg);
           contact.followupsSent.push(i);

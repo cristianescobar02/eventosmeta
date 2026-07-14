@@ -1,4 +1,11 @@
-import { env, catalog, matchProductByKeyword, getProduct, renderTemplate } from "./config.js";
+import {
+  env,
+  catalog,
+  matchProductByKeyword,
+  getProduct,
+  renderTemplate,
+  normalizeFlowStep,
+} from "./config.js";
 import { upsertContact, pushHistory, addTag, save } from "./db.js";
 import { sendText, sendSequence, markAsRead, downloadMedia } from "./whatsapp.js";
 import { agentReply } from "./agent.js";
@@ -84,11 +91,21 @@ async function handleText(contact, text, referral) {
     save();
     logLead(contact, matched);
 
-    const flow = (matched.flujoInicio || []).map((m) => renderTemplate(m, matched));
+    const flow = (matched.flujoInicio || []).map(normalizeFlowStep).map((step) =>
+      step.type === "image" || step.type === "video"
+        ? { ...step, caption: step.caption ? renderTemplate(step.caption, matched) : undefined }
+        : { type: "text", text: renderTemplate(step.text, matched) },
+    );
     if (flow.length) {
       await sendSequence(contact.phone, flow);
       contact.lastOutboundAt = Date.now();
-      for (const m of flow) pushHistory(contact, "assistant", m);
+      for (const step of flow) {
+        const label =
+          step.type === "text"
+            ? step.text
+            : `[${step.type === "image" ? "Imagen" : "Video"} enviado${step.caption ? ": " + step.caption : ""}]`;
+        pushHistory(contact, "assistant", label);
+      }
       return;
     }
   }

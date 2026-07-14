@@ -65,6 +65,20 @@ knowledge/
 
 En tu anuncio de Meta configura el mensaje pre-llenado con la palabra clave del producto (ej. "CURSO"). Cuando el cliente lo envíe, el bot dispara el flujo de inicio de ese producto automáticamente. El bot también lee el objeto `referral` del webhook y etiqueta al contacto con el ID del anuncio (`ad:<id>`).
 
+## Configurar productos desde el panel (sin editar archivos)
+
+En la pestaña **Productos** del panel (`/admin`) puedes crear y editar todo sin tocar `products.json` ni las carpetas de `knowledge/` a mano:
+
+- **Datos del producto**: nombre, palabras clave, precio, link de Google Drive.
+- **Flujo inicial con multimedia**: agrega pasos de texto, imagen o video (subes el archivo directamente y queda alojado en los servidores de WhatsApp — no necesitas un hosting propio). Reordena los pasos con las flechas. Usa `{negocio}`, `{producto}`, `{precio}` en cualquier texto o descripción.
+- **Base de conocimiento**: un editor de texto simple, un archivo por producto.
+- **"Ocultar precios de la base de conocimiento"**: actívalo cuando el documento de referencia tenga precios/cifras internas que son justamente lo que el cliente compra (ej. una base de datos de precios de construcción). Con esto activo:
+  - El bot puede describir libremente qué cubre (categorías, alcance, servicios).
+  - Nunca revela un número o precio específico que esté en ese documento, sin importar cómo se lo pidan.
+  - Hay un **filtro técnico de respaldo**: si a pesar de la instrucción el modelo llegara a repetir una cifra del documento, el sistema lo detecta automáticamente y regenera la respuesta antes de enviarla — no depende solo de que el modelo "se porte bien".
+  - El precio de venta del producto (`precioTexto`) se sigue mostrando normal; lo que se protege son los números *dentro* del documento de referencia.
+- **Remarketing por condición de etiqueta**: cada seguimiento puede exigir o excluir una etiqueta (ej. "solo si NO tiene la etiqueta `comprador`"), para dirigir mensajes distintos según el estado real del cliente.
+
 ## Panel de control (visual de conversaciones)
 
 En `https://tu-servidor/admin` tienes un panel web para controlar cada conversación en tiempo real:

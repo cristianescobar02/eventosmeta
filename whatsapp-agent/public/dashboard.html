@@ -186,6 +186,89 @@
     background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px;
     font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 60;
   }
+
+  /* ── Tabs ── */
+  #tabs { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  #tabs button { border: none; background: none; color: var(--ink-2); padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+  #tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* ── Productos ── */
+  #productsMain {
+    display: none; flex: 1; grid-template-columns: 320px 1fr; gap: 12px;
+    padding: 0 20px 16px; min-height: 0;
+  }
+  #productsMain.visible { display: grid; }
+  @media (max-width: 800px) {
+    #productsMain { grid-template-columns: 1fr; }
+    #productEditorPane { display: none; }
+    #productsMain.editor-open #productListPane { display: none; }
+    #productsMain.editor-open #productEditorPane { display: flex; }
+  }
+
+  #productListPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0;
+  }
+  #productListTools { padding: 10px; border-bottom: 1px solid var(--border); }
+  #productListTools button {
+    width: 100%; padding: 9px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600;
+  }
+  #productList { overflow-y: auto; flex: 1; }
+  .pitem { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+  .pitem:hover { background: var(--surface-2); }
+  .pitem.selected { background: var(--accent-soft); }
+  .pitem .pname { font-weight: 600; }
+  .pitem .pmeta { font-size: 12px; color: var(--ink-2); }
+
+  #productEditorPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 18px;
+  }
+  #productEditorEmpty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+  #productForm { display: flex; flex-direction: column; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .field input[type=text], .field input[type=number], .field input[type=url], .field textarea {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); width: 100%;
+  }
+  .field textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .checkfield { display: flex; align-items: flex-start; gap: 8px; padding: 10px; background: var(--surface-2); border-radius: 8px; margin-bottom: 14px; }
+  .checkfield small { display: block; color: var(--ink-2); margin-top: 3px; font-weight: 400; }
+  .checkfield input { margin-top: 3px; }
+
+  .section-title { font-size: 13px; font-weight: 700; margin: 6px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .section-title button.add {
+    margin-left: auto; font-size: 12px; border: 1px dashed var(--accent); color: var(--accent);
+    background: none; border-radius: 6px; padding: 3px 9px;
+  }
+
+  .step-card {
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; background: var(--surface-2);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .step-card .step-head { display: flex; align-items: center; gap: 6px; }
+  .step-card select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+  .step-card .spacer { flex: 1; }
+  .step-card button.icon { border: none; background: none; color: var(--ink-3); font-size: 14px; padding: 2px 6px; }
+  .step-card button.icon:hover { color: var(--ink); }
+  .step-card button.icon.danger:hover { color: var(--danger); }
+  .step-card textarea, .step-card input[type=text] {
+    padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); width: 100%; font-family: inherit;
+  }
+  .media-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); flex-wrap: wrap; }
+  .media-row img.thumb, .media-row video.thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; }
+
+  .editor-actions {
+    display: flex; gap: 8px; margin-top: 10px; position: sticky; bottom: -18px;
+    background: var(--surface); padding: 10px 0 0;
+  }
+  .editor-actions button { padding: 9px 16px; border-radius: 8px; font-weight: 600; border: none; }
+  .editor-actions .save { background: var(--accent); color: #fff; }
+  .editor-actions .delete { background: var(--danger-soft); color: var(--danger); margin-left: auto; }
+  .editor-actions .cancel { background: var(--neutral-soft); color: var(--ink-2); }
 </style>
 </head>
 <body>
@@ -205,6 +288,10 @@
     <div>
       <h1>Agente de WhatsApp</h1>
       <div class="sub">Control de conversaciones</div>
+    </div>
+    <div id="tabs">
+      <button data-tab="chats" class="active">Conversaciones</button>
+      <button data-tab="products">Productos</button>
     </div>
     <div id="stats"></div>
   </header>
@@ -247,6 +334,68 @@
       </form>
     </section>
   </main>
+
+  <div id="productsMain">
+    <section id="productListPane">
+      <div id="productListTools"><button id="newProductBtn">+ Nuevo producto</button></div>
+      <div id="productList"></div>
+    </section>
+
+    <section id="productEditorPane">
+      <div id="productEditorEmpty">Selecciona un producto o crea uno nuevo 👈</div>
+      <form id="productForm" style="display:none">
+        <div class="field">
+          <label>Nombre del producto</label>
+          <input type="text" id="pf_nombre" required />
+        </div>
+        <div class="field">
+          <label>Palabras clave (separadas por coma — lo que el cliente escribe desde el anuncio)</label>
+          <input type="text" id="pf_keywords" placeholder="CURSO, INFO" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Precio (número)</label>
+            <input type="number" id="pf_precio" min="1" />
+          </div>
+          <div class="field">
+            <label>Precio en texto</label>
+            <input type="text" id="pf_precioTexto" placeholder="$49.900 COP" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Link de Google Drive (acceso al producto)</label>
+          <input type="url" id="pf_driveLink" placeholder="https://drive.google.com/..." />
+        </div>
+        <label class="checkfield">
+          <input type="checkbox" id="pf_ocultarPrecios" />
+          <span>Ocultar precios de la base de conocimiento
+            <small>Actívalo si el documento de referencia de este producto tiene precios o cifras internas que NO debes revelar en la conversación (el bot puede describir qué incluye, pero nunca esos números). Tiene un filtro técnico de respaldo, no depende solo de la instrucción.</small>
+          </span>
+        </label>
+
+        <div class="section-title">Flujo inicial (mensajes de bienvenida)
+          <button type="button" class="add" id="addFlowStepBtn">+ agregar paso</button>
+        </div>
+        <div id="flowSteps"></div>
+
+        <div class="section-title">Base de conocimiento</div>
+        <div class="field">
+          <textarea id="pf_knowledge" rows="7" placeholder="Toda la información que el bot debe conocer sobre este producto: qué incluye, para quién es, preguntas frecuentes, garantías…"></textarea>
+        </div>
+
+        <div class="section-title">Remarketing (seguimientos automáticos)
+          <button type="button" class="add" id="addRemarketingStepBtn">+ agregar paso</button>
+        </div>
+        <div id="remarketingSteps"></div>
+
+        <div class="editor-actions">
+          <button type="button" class="cancel" id="cancelProductBtn">Cancelar</button>
+          <button type="submit" class="save">Guardar producto</button>
+          <button type="button" class="delete" id="deleteProductBtn">Eliminar</button>
+        </div>
+      </form>
+    </section>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -259,6 +408,10 @@ let selected = null;   // teléfono seleccionado
 let filter = "todos";
 let searchText = "";
 let products = [];
+let allProducts = [];      // catálogo completo para la pestaña Productos
+let editingProduct = null; // producto en edición (null = creando uno nuevo)
+let currentFlow = [];      // pasos del flujo inicial en edición
+let currentRemarketing = []; // pasos de remarketing en edición
 
 function toast(msg) {
   const t = $("toast");
@@ -482,6 +635,335 @@ $("composer").addEventListener("submit", async (e) => {
 });
 $("msgInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("composer").requestSubmit(); }
+});
+
+/* ── Pestañas ── */
+$("tabs").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  const tab = e.target.dataset.tab;
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b === e.target));
+  if (tab === "products") {
+    $("main").style.display = "none";
+    $("productsMain").classList.add("visible");
+    loadProductsFull();
+  } else {
+    $("main").style.display = "";
+    $("productsMain").classList.remove("visible");
+  }
+});
+
+/* ── Productos: lista ── */
+async function loadProductsFull() {
+  try {
+    allProducts = await api("/products/full");
+    renderProductList();
+  } catch (err) {
+    toast("Error cargando productos: " + err.message);
+  }
+}
+
+function renderProductList() {
+  $("productList").innerHTML =
+    allProducts
+      .map(
+        (p) => `
+    <div class="pitem ${editingProduct?.id === p.id ? "selected" : ""}" data-id="${p.id}">
+      <div class="pname">${esc(p.nombre)}</div>
+      <div class="pmeta">${esc(p.precioTexto)} · ${esc((p.keywords || []).join(", "))}</div>
+    </div>`,
+      )
+      .join("") || '<div style="padding:20px;color:var(--ink-3)">Sin productos aún. Crea el primero 👆</div>';
+}
+
+$("productList").addEventListener("click", (e) => {
+  const item = e.target.closest(".pitem");
+  if (!item) return;
+  const p = allProducts.find((x) => x.id === item.dataset.id);
+  if (p) openProductEditor(p);
+});
+
+$("newProductBtn").addEventListener("click", () => openProductEditor(null));
+
+/* ── Productos: editor ── */
+function normalizeStepForEdit(step) {
+  if (typeof step === "string") return { type: "text", text: step };
+  return { ...step };
+}
+
+function openProductEditor(p) {
+  editingProduct = p;
+  $("productEditorEmpty").style.display = "none";
+  $("productForm").style.display = "flex";
+  $("productsMain").classList.add("editor-open");
+
+  $("pf_nombre").value = p?.nombre || "";
+  $("pf_keywords").value = (p?.keywords || []).join(", ");
+  $("pf_precio").value = p?.precio || "";
+  $("pf_precioTexto").value = p?.precioTexto || "";
+  $("pf_driveLink").value = p?.driveLink || "";
+  $("pf_ocultarPrecios").checked = !!p?.ocultarPreciosReferencia;
+  $("deleteProductBtn").style.display = p ? "" : "none";
+
+  currentFlow = (p?.flujoInicio || []).map(normalizeStepForEdit);
+  currentRemarketing = (p?.remarketing || []).map((s) => ({ ...s }));
+  renderFlowSteps();
+  renderRemarketingSteps();
+
+  if (p) {
+    $("pf_knowledge").value = "Cargando…";
+    api(`/products/${p.id}/knowledge`)
+      .then((r) => { $("pf_knowledge").value = r.content || ""; })
+      .catch(() => { $("pf_knowledge").value = ""; });
+  } else {
+    $("pf_knowledge").value = "";
+  }
+
+  renderProductList();
+}
+
+function closeProductEditor() {
+  $("productForm").style.display = "none";
+  $("productEditorEmpty").style.display = "flex";
+  $("productsMain").classList.remove("editor-open");
+  editingProduct = null;
+  renderProductList();
+}
+
+$("cancelProductBtn").addEventListener("click", closeProductEditor);
+
+/* ── Flujo inicial: render + edición ── */
+function renderFlowSteps() {
+  $("flowSteps").innerHTML =
+    currentFlow
+      .map((step, i) => {
+        if (step.type === "text") {
+          return `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <select class="step-type">
+          <option value="text" selected>Texto</option>
+          <option value="image">Imagen</option>
+          <option value="video">Video</option>
+        </select>
+        <span class="spacer"></span>
+        <button type="button" class="icon step-up" title="Subir">↑</button>
+        <button type="button" class="icon step-down" title="Bajar">↓</button>
+        <button type="button" class="icon danger step-remove" title="Eliminar">✕</button>
+      </div>
+      <textarea class="step-text" placeholder="Usa {negocio}, {producto}, {precio}">${esc(step.text || "")}</textarea>
+    </div>`;
+        }
+        const kindLabel = step.type === "image" ? "Imagen" : "Video";
+        const thumb = step.previewUrl
+          ? step.type === "image"
+            ? `<img class="thumb" src="${step.previewUrl}">`
+            : `<video class="thumb" src="${step.previewUrl}"></video>`
+          : "";
+        return `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <select class="step-type">
+          <option value="text">Texto</option>
+          <option value="image" ${step.type === "image" ? "selected" : ""}>Imagen</option>
+          <option value="video" ${step.type === "video" ? "selected" : ""}>Video</option>
+        </select>
+        <span class="spacer"></span>
+        <button type="button" class="icon step-up" title="Subir">↑</button>
+        <button type="button" class="icon step-down" title="Bajar">↓</button>
+        <button type="button" class="icon danger step-remove" title="Eliminar">✕</button>
+      </div>
+      <div class="media-row">
+        <input type="file" class="step-file" accept="${step.type === "image" ? "image/*" : "video/*"}" />
+        ${thumb}
+        <span>${step.mediaId ? "✅ " + kindLabel + " subido" : "⏳ falta subir el archivo"}</span>
+      </div>
+      <input type="text" class="step-caption" placeholder="Texto que acompaña (opcional). Usa {negocio}, {producto}, {precio}" value="${esc(step.caption || "")}" />
+    </div>`;
+      })
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:8px 0">Sin pasos aún — agrega el primer mensaje de bienvenida.</div>';
+}
+
+$("addFlowStepBtn").addEventListener("click", () => {
+  currentFlow.push({ type: "text", text: "" });
+  renderFlowSteps();
+});
+
+$("flowSteps").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("step-remove")) {
+    currentFlow.splice(i, 1);
+    renderFlowSteps();
+  } else if (e.target.classList.contains("step-up") && i > 0) {
+    [currentFlow[i - 1], currentFlow[i]] = [currentFlow[i], currentFlow[i - 1]];
+    renderFlowSteps();
+  } else if (e.target.classList.contains("step-down") && i < currentFlow.length - 1) {
+    [currentFlow[i + 1], currentFlow[i]] = [currentFlow[i], currentFlow[i + 1]];
+    renderFlowSteps();
+  }
+});
+
+$("flowSteps").addEventListener("change", async (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+
+  if (e.target.classList.contains("step-type")) {
+    currentFlow[i] = { type: e.target.value, text: "" };
+    renderFlowSteps();
+    return;
+  }
+
+  if (e.target.classList.contains("step-file")) {
+    const file = e.target.files[0];
+    if (!file) return;
+    currentFlow[i].previewUrl = URL.createObjectURL(file);
+    renderFlowSteps();
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + TOKEN },
+        body: form,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error subiendo archivo");
+      currentFlow[i].mediaId = json.mediaId;
+      toast("Archivo subido ✅");
+    } catch (err) {
+      toast("Error subiendo archivo: " + err.message);
+    }
+    renderFlowSteps();
+  }
+});
+
+$("flowSteps").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("step-text")) currentFlow[i].text = e.target.value;
+  else if (e.target.classList.contains("step-caption")) currentFlow[i].caption = e.target.value;
+});
+
+/* ── Remarketing: render + edición ── */
+function renderRemarketingSteps() {
+  $("remarketingSteps").innerHTML =
+    currentRemarketing
+      .map(
+        (step, i) => `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <input type="text" class="rm-horas" style="width:60px" value="${step.horas ?? ""}" placeholder="hrs" />
+        <span style="font-size:12px;color:var(--ink-2)">horas después del último mensaje del cliente</span>
+        <span class="spacer"></span>
+        <button type="button" class="icon danger rm-remove" title="Eliminar">✕</button>
+      </div>
+      <textarea class="rm-mensaje" placeholder="Mensaje de seguimiento. Usa {negocio}, {producto}, {precio}">${esc(step.mensaje || "")}</textarea>
+      <div class="field-row">
+        <div class="field">
+          <label>Solo si tiene la etiqueta (opcional)</label>
+          <input type="text" class="rm-req" value="${esc(step.etiquetaRequerida || "")}" placeholder="ej: interesado:curso-x" />
+        </div>
+        <div class="field">
+          <label>Solo si NO tiene la etiqueta (opcional)</label>
+          <input type="text" class="rm-exc" value="${esc(step.etiquetaExcluida || "")}" placeholder="ej: comprador" />
+        </div>
+      </div>
+    </div>`,
+      )
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:8px 0">Sin seguimientos configurados para este producto (usará el remarketing general).</div>';
+}
+
+$("addRemarketingStepBtn").addEventListener("click", () => {
+  currentRemarketing.push({ horas: 5, mensaje: "" });
+  renderRemarketingSteps();
+});
+
+$("remarketingSteps").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("rm-remove")) {
+    currentRemarketing.splice(i, 1);
+    renderRemarketingSteps();
+  }
+});
+
+$("remarketingSteps").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("rm-horas")) currentRemarketing[i].horas = Number(e.target.value) || 0;
+  else if (e.target.classList.contains("rm-mensaje")) currentRemarketing[i].mensaje = e.target.value;
+  else if (e.target.classList.contains("rm-req")) currentRemarketing[i].etiquetaRequerida = e.target.value.trim();
+  else if (e.target.classList.contains("rm-exc")) currentRemarketing[i].etiquetaExcluida = e.target.value.trim();
+});
+
+/* ── Guardar / eliminar producto ── */
+$("productForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const pendingMedia = currentFlow.find((s) => (s.type === "image" || s.type === "video") && !s.mediaId);
+  if (pendingMedia) {
+    toast("Falta terminar de subir un archivo de imagen/video del flujo");
+    return;
+  }
+
+  const body = {
+    nombre: $("pf_nombre").value.trim(),
+    keywords: $("pf_keywords").value.split(",").map((s) => s.trim()).filter(Boolean),
+    precio: Number($("pf_precio").value),
+    precioTexto: $("pf_precioTexto").value.trim(),
+    driveLink: $("pf_driveLink").value.trim(),
+    ocultarPreciosReferencia: $("pf_ocultarPrecios").checked,
+    flujoInicio: currentFlow.map((s) =>
+      s.type === "text"
+        ? { type: "text", text: s.text || "" }
+        : { type: s.type, mediaId: s.mediaId, caption: s.caption || "" },
+    ),
+    remarketing: currentRemarketing.map((s) => ({
+      horas: Number(s.horas) || 0,
+      mensaje: s.mensaje || "",
+      ...(s.etiquetaRequerida ? { etiquetaRequerida: s.etiquetaRequerida } : {}),
+      ...(s.etiquetaExcluida ? { etiquetaExcluida: s.etiquetaExcluida } : {}),
+    })),
+  };
+
+  try {
+    const saved = editingProduct
+      ? await api(`/products/${editingProduct.id}`, { method: "PUT", body: JSON.stringify(body) })
+      : await api("/products", { method: "POST", body: JSON.stringify(body) });
+
+    await api(`/products/${saved.product.id}/knowledge`, {
+      method: "PUT",
+      body: JSON.stringify({ content: $("pf_knowledge").value }),
+    });
+
+    toast("Producto guardado ✅");
+    editingProduct = saved.product;
+    await loadProductsFull();
+    products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+$("deleteProductBtn").addEventListener("click", async () => {
+  if (!editingProduct) return;
+  if (!confirm(`¿Eliminar "${editingProduct.nombre}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    await api(`/products/${editingProduct.id}`, { method: "DELETE" });
+    toast("Producto eliminado");
+    closeProductEditor();
+    await loadProductsFull();
+    products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
 });
 
 if (TOKEN) tryEnter(); else showLogin("");

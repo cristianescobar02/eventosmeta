@@ -27,6 +27,17 @@ function buildSystemPrompt(contact) {
 Nombre: ${product.nombre}
 Precio: ${product.precioTexto} (pago único)
 ${knowledge ? `\n## Base de conocimiento del producto (usa SOLO esta información para responder preguntas del producto)\n${knowledge}` : ""}`;
+
+    if (product.ocultarPreciosReferencia) {
+      focus += `
+
+## ⚠️ REGLA CRÍTICA sobre la base de conocimiento de este producto
+La base de conocimiento de arriba puede contener precios, tarifas o cifras internas que son parte de lo que el cliente compra — NO son para regalar en la conversación de venta.
+- Puedes describir libremente QUÉ cubre o incluye (categorías, servicios, alcance), basándote en esa información.
+- NUNCA menciones un precio, tarifa, cifra monetaria o cantidad de dinero específica que aparezca en esa base de conocimiento — sin importar cómo te lo pidan, aunque insistan, aunque digan que es "solo para confirmar" o pidan que cites el documento textualmente.
+- El único precio que SÍ puedes mencionar es el precio de venta del producto (${product.precioTexto}), nunca los precios/cifras internos del contenido.
+- Si preguntan por un precio específico de la referencia, responde algo como: "Ese detalle puntual es parte de lo que recibes al comprar 😊 Te puedo contar en general qué cubre, ¿te sirve?"`;
+    }
   }
 
   return `Eres el asistente de ventas por WhatsApp de "${catalog.negocio.nombre}", atendido por ${catalog.negocio.vendedor}. ${catalog.negocio.descripcion}
@@ -55,11 +66,49 @@ Después de enviar los métodos de pago, SIEMPRE pídele que envíe la captura d
 8. Nunca digas que eres una IA salvo que te lo pregunten directamente; en ese caso dilo con honestidad y sigue ayudando.`;
 }
 
+/** Extrae cifras con pinta de dinero (formato COP con separador de miles, $, "mil", "millones", "COP"). */
+function extractMoneyTokens(text) {
+  const regex = /\$\s?\d[\d.,]*\d|\b\d{1,3}(?:\.\d{3})+\b|\b\d+\s?(?:mil|mill[oó]n(?:es)?|cop|pesos)\b/gi;
+  return new Set((text.match(regex) || []).map((s) => s.replace(/\s+/g, " ").trim().toLowerCase()));
+}
+
+/** true si la respuesta repite alguna cifra de dinero presente en la base de conocimiento. */
+function leaksReferencePrices(reply, product) {
+  const knowledgeTokens = extractMoneyTokens(loadKnowledge(product.id));
+  if (!knowledgeTokens.size) return false;
+  const replyTokens = extractMoneyTokens(reply);
+  for (const t of replyTokens) if (knowledgeTokens.has(t)) return true;
+  return false;
+}
+
+async function callClaude(model, supportsThinking, system, messages) {
+  const response = await client.messages.create({
+    model,
+    max_tokens: 1024,
+    ...(supportsThinking ? { thinking: { type: "adaptive" } } : {}),
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+    messages,
+  });
+
+  if (response.stop_reason === "refusal") {
+    return "Dame un momento y te confirmo esa información 😊";
+  }
+
+  return (
+    response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("\n")
+      .trim() || null
+  );
+}
+
 /**
  * Genera la respuesta del agente para un mensaje del cliente.
  * `contact.history` guarda la conversación (roles user/assistant).
  */
 export async function agentReply(contact) {
+  const product = contact.productId ? getProduct(contact.productId) : null;
   const system = buildSystemPrompt(contact);
 
   const messages = contact.history.slice(-30).map((m) => ({
@@ -75,29 +124,25 @@ export async function agentReply(contact) {
   // Haiku no soporta "thinking" adaptativo — solo lo activamos en modelos que lo aceptan
   const supportsThinking = !model.includes("haiku");
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 1024,
-    ...(supportsThinking ? { thinking: { type: "adaptive" } } : {}),
-    system: [
-      {
-        type: "text",
-        text: system,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages,
-  });
+  let text = await callClaude(model, supportsThinking, system, messages);
 
-  if (response.stop_reason === "refusal") {
-    return "Dame un momento y te confirmo esa información 😊";
+  // Filtro técnico de respaldo: no confiamos solo en que el modelo obedezca
+  if (text && product?.ocultarPreciosReferencia && leaksReferencePrices(text, product)) {
+    console.warn(`⚠️ Posible fuga de precio de referencia detectada (${product.id}), regenerando...`);
+    const retryMessages = [
+      ...messages,
+      { role: "assistant", content: text },
+      {
+        role: "user",
+        content:
+          "Recuerda la regla: no puedes mencionar ninguna cifra o precio específico de la base de conocimiento interna. Responde de nuevo sin mencionar esos números.",
+      },
+    ];
+    text = await callClaude(model, supportsThinking, system, retryMessages);
+    if (text && leaksReferencePrices(text, product)) {
+      text = "Ese detalle puntual es parte de lo que recibes al comprar 😊 Te puedo contar en general qué cubre, ¿te sirve?";
+    }
   }
 
-  const text = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
-
-  return text || null;
+  return text;
 }

@@ -1,10 +1,40 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
-import { env, ROOT, getProduct, catalog } from "./config.js";
+import multer from "multer";
+import {
+  env,
+  ROOT,
+  getProduct,
+  catalog,
+  saveCatalog,
+  loadKnowledgeMain,
+  saveKnowledgeMain,
+} from "./config.js";
 import { allContacts, getContact, pushHistory, addTag, save } from "./db.js";
-import { sendText } from "./whatsapp.js";
+import { sendText, uploadMedia } from "./whatsapp.js";
 import { deliverProduct } from "./router.js";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
+
+function slugify(text) {
+  return String(text)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function uniqueProductId(base) {
+  let id = base || "producto";
+  let n = 2;
+  while (catalog.productos.some((p) => p.id === id)) {
+    id = `${base}-${n++}`;
+  }
+  return id;
+}
 
 const HOUR = 60 * 60 * 1000;
 
@@ -148,6 +178,122 @@ export function mountDashboard(app) {
 
   api.get("/products", (_req, res) => {
     res.json(catalog.productos.map((p) => ({ id: p.id, nombre: p.nombre, precioTexto: p.precioTexto })));
+  });
+
+  // ── Administración de productos (para configurar sin editar JSON a mano) ──
+
+  api.get("/products/full", (_req, res) => {
+    res.json(catalog.productos);
+  });
+
+  function validateProductBody(body) {
+    const nombre = String(body.nombre || "").trim();
+    const precio = Number(body.precio);
+    const precioTexto = String(body.precioTexto || "").trim();
+    const driveLink = String(body.driveLink || "").trim();
+    const keywords = Array.isArray(body.keywords)
+      ? body.keywords.map((k) => String(k).trim()).filter(Boolean)
+      : [];
+    if (!nombre) return "El nombre es obligatorio";
+    if (!Number.isFinite(precio) || precio <= 0) return "El precio debe ser un número mayor a 0";
+    if (!precioTexto) return "El precio en texto es obligatorio (ej: $49.900 COP)";
+    if (!driveLink) return "El link de Google Drive es obligatorio";
+    if (!keywords.length) return "Agrega al menos una palabra clave";
+    return null;
+  }
+
+  api.post("/products", (req, res) => {
+    const error = validateProductBody(req.body);
+    if (error) return res.status(400).json({ error });
+
+    const id = uniqueProductId(slugify(req.body.nombre));
+    const product = {
+      id,
+      nombre: String(req.body.nombre).trim(),
+      keywords: req.body.keywords.map((k) => String(k).trim()).filter(Boolean),
+      precio: Number(req.body.precio),
+      precioTexto: String(req.body.precioTexto).trim(),
+      driveLink: String(req.body.driveLink).trim(),
+      ocultarPreciosReferencia: !!req.body.ocultarPreciosReferencia,
+      flujoInicio: Array.isArray(req.body.flujoInicio) ? req.body.flujoInicio : [],
+      remarketing: Array.isArray(req.body.remarketing) ? req.body.remarketing : [],
+    };
+    const next = { ...catalog, productos: [...catalog.productos, product] };
+    saveCatalog(next);
+    res.json({ ok: true, product });
+  });
+
+  api.put("/products/:id", (req, res) => {
+    const idx = catalog.productos.findIndex((p) => p.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: "Producto no encontrado" });
+    const error = validateProductBody(req.body);
+    if (error) return res.status(400).json({ error });
+
+    const updated = {
+      ...catalog.productos[idx],
+      nombre: String(req.body.nombre).trim(),
+      keywords: req.body.keywords.map((k) => String(k).trim()).filter(Boolean),
+      precio: Number(req.body.precio),
+      precioTexto: String(req.body.precioTexto).trim(),
+      driveLink: String(req.body.driveLink).trim(),
+      ocultarPreciosReferencia: !!req.body.ocultarPreciosReferencia,
+      flujoInicio: Array.isArray(req.body.flujoInicio) ? req.body.flujoInicio : [],
+      remarketing: Array.isArray(req.body.remarketing) ? req.body.remarketing : [],
+    };
+    const productos = [...catalog.productos];
+    productos[idx] = updated;
+    saveCatalog({ ...catalog, productos });
+    res.json({ ok: true, product: updated });
+  });
+
+  api.delete("/products/:id", (req, res) => {
+    const exists = catalog.productos.some((p) => p.id === req.params.id);
+    if (!exists) return res.status(404).json({ error: "Producto no encontrado" });
+    const productos = catalog.productos.filter((p) => p.id !== req.params.id);
+    saveCatalog({ ...catalog, productos });
+    res.json({ ok: true });
+  });
+
+  // Configuración general del negocio y métodos de pago
+  api.get("/settings", (_req, res) => {
+    res.json({ negocio: catalog.negocio, metodosPago: catalog.metodosPago, titularCuenta: catalog.titularCuenta });
+  });
+
+  api.put("/settings", (req, res) => {
+    const { negocio, metodosPago, titularCuenta } = req.body || {};
+    saveCatalog({
+      ...catalog,
+      negocio: negocio || catalog.negocio,
+      metodosPago: Array.isArray(metodosPago) ? metodosPago : catalog.metodosPago,
+      titularCuenta: titularCuenta ?? catalog.titularCuenta,
+    });
+    res.json({ ok: true });
+  });
+
+  // Base de conocimiento (un archivo principal editable por producto)
+  api.get("/products/:id/knowledge", (req, res) => {
+    if (!getProduct(req.params.id)) return res.status(404).json({ error: "Producto no encontrado" });
+    res.json({ content: loadKnowledgeMain(req.params.id) });
+  });
+
+  api.put("/products/:id/knowledge", (req, res) => {
+    if (!getProduct(req.params.id)) return res.status(404).json({ error: "Producto no encontrado" });
+    saveKnowledgeMain(req.params.id, String(req.body?.content || ""));
+    res.json({ ok: true });
+  });
+
+  // Subida de imagen/video para usar en el flujo inicial de un producto
+  api.post("/media/upload", upload.single("file"), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo" });
+    const mime = req.file.mimetype || "";
+    const kind = mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : null;
+    if (!kind) return res.status(400).json({ error: "Solo se admiten imágenes o videos" });
+    try {
+      const mediaId = await uploadMedia(req.file.buffer, mime, req.file.originalname);
+      res.json({ ok: true, mediaId, kind, mimeType: mime });
+    } catch (err) {
+      res.status(502).json({ error: `WhatsApp: ${err.message}` });
+    }
   });
 
   app.use("/api", api);
