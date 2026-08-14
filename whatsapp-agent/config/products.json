@@ -1,0 +1,58 @@
+{
+  "negocio": {
+    "nombre": "Mi Negocio Digital",
+    "vendedor": "Cristian",
+    "moneda": "COP",
+    "descripcion": "Vendemos productos digitales de varios nichos con entrega inmediata por Google Drive."
+  },
+  "metodosPago": [
+    {
+      "nombre": "Nequi",
+      "datos": "310 000 0000 — a nombre de Cristian Escobar"
+    },
+    {
+      "nombre": "Bancolombia (transferencia)",
+      "datos": "Cuenta de ahorros 000-000000-00 — a nombre de Cristian Escobar"
+    },
+    {
+      "nombre": "Daviplata",
+      "datos": "310 000 0000 — a nombre de Cristian Escobar"
+    }
+  ],
+  "titularCuenta": "Cristian Escobar",
+  "productos": [
+    {
+      "id": "curso-ejemplo",
+      "nombre": "Curso Ejemplo de Marketing",
+      "keywords": ["CURSO", "INFO", "QUIERO EL CURSO"],
+      "precio": 49900,
+      "precioTexto": "$49.900 COP",
+      "driveLink": "https://drive.google.com/drive/folders/REEMPLAZA-CON-TU-LINK",
+      "flujoInicio": [
+        "¡Hola! 👋 Qué bueno que llegaste. Soy el asistente de {negocio}.",
+        "Te cuento sobre el *{producto}*: es un curso completo, 100% digital, con acceso inmediato y de por vida. 🚀",
+        "El precio hoy es de *{precio}* (pago único, sin mensualidades).\n\n¿Te gustaría que te cuente qué incluye o tienes alguna pregunta? 😊"
+      ],
+      "remarketing": [
+        {
+          "horas": 5,
+          "mensaje": "¡Hola de nuevo! 👋 Vi que estabas interesado en el *{producto}* y quería saber si te quedó alguna duda. Estoy aquí para ayudarte 😊"
+        },
+        {
+          "horas": 20,
+          "mensaje": "Antes de que se cierre este chat, quería confirmar si sigues interesado en el *{producto}* o si hay algo que te esté deteniendo. Con gusto te resuelvo cualquier duda 🙂"
+        }
+      ]
+    }
+  ],
+  "remarketingGeneral": [
+    {
+      "horas": 5,
+      "mensaje": "¡Hola! 👋 Quedé pendiente de ti. ¿Te gustaría que te cuente más sobre nuestros productos digitales?"
+    },
+    {
+      "horas": 20,
+      "mensaje": "Antes de que se cierre este chat, quería saber si tienes alguna duda o si te gustaría conocer más sobre nuestros productos 🙂"
+    }
+  ]
+}

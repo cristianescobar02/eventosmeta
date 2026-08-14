@@ -1,0 +1,1434 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Panel · Agente de WhatsApp</title>
+<style>
+  :root {
+    --bg: #f3f4f2;
+    --surface: #ffffff;
+    --surface-2: #f7f8f6;
+    --border: #e2e5e0;
+    --ink: #1d2520;
+    --ink-2: #5a655e;
+    --ink-3: #8b948e;
+    --accent: #128c4a;
+    --accent-soft: #e7f5ec;
+    --bubble-in: #ffffff;
+    --bubble-out: #dcf5e3;
+    --danger: #b3372f;
+    --danger-soft: #fbeae8;
+    --warn: #8a6116;
+    --warn-soft: #fdf3dc;
+    --info: #2b5f8f;
+    --info-soft: #e8f1f8;
+    --neutral-soft: #eceeeb;
+    --shadow: 0 1px 3px rgba(20, 30, 24, 0.08);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121613;
+      --surface: #1b211d;
+      --surface-2: #161b18;
+      --border: #2b332d;
+      --ink: #e8ece9;
+      --ink-2: #a7b1aa;
+      --ink-3: #78827b;
+      --accent: #3fae72;
+      --accent-soft: #1d3226;
+      --bubble-in: #232a25;
+      --bubble-out: #1e3a2a;
+      --danger: #e07a6f;
+      --danger-soft: #3a2320;
+      --warn: #d9ad55;
+      --warn-soft: #35290f;
+      --info: #7aaed6;
+      --info-soft: #1c2b38;
+      --neutral-soft: #262d28;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  button { font: inherit; cursor: pointer; }
+  input, textarea, select { font: inherit; color: var(--ink); }
+
+  /* ── Login ── */
+  #login {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); z-index: 50;
+  }
+  #login .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 32px; width: 320px; display: flex; flex-direction: column; gap: 12px;
+  }
+  #login h1 { font-size: 18px; }
+  #login p { color: var(--ink-2); font-size: 13px; }
+  #login input {
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2);
+  }
+  #login button {
+    padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600;
+  }
+  #login .error { color: var(--danger); font-size: 13px; min-height: 18px; }
+
+  /* ── Layout ── */
+  #app { display: none; height: 100%; flex-direction: column; }
+  header {
+    padding: 14px 20px 10px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header .sub { color: var(--ink-3); font-size: 12px; }
+  #stats { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 8px 14px; min-width: 92px;
+  }
+  .tile .num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tile .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  main {
+    flex: 1; display: grid; grid-template-columns: 340px 1fr; gap: 12px;
+    padding: 0 20px 16px; min-height: 0;
+  }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } #chatPane { display: none; }
+    main.chat-open #listPane { display: none; } main.chat-open #chatPane { display: flex; } }
+
+  /* ── Lista de conversaciones ── */
+  #listPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0;
+  }
+  #listTools { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  #search {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2);
+  }
+  #filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  #filters button {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-2);
+    border-radius: 999px; padding: 3px 10px; font-size: 12px;
+  }
+  #filters button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #list { overflow-y: auto; flex: 1; }
+  .item {
+    padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; gap: 3px;
+  }
+  .item:hover { background: var(--surface-2); }
+  .item.selected { background: var(--accent-soft); }
+  .item .row1 { display: flex; align-items: center; gap: 8px; }
+  .item .name { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .time { font-size: 11px; color: var(--ink-3); }
+  .item .preview { font-size: 12px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .row3 { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .badge {
+    font-size: 10.5px; font-weight: 600; border-radius: 5px; padding: 1px 7px; letter-spacing: 0.02em;
+  }
+  .badge.nuevo        { background: var(--neutral-soft); color: var(--ink-2); }
+  .badge.conversando  { background: var(--info-soft); color: var(--info); }
+  .badge.pago_pendiente { background: var(--warn-soft); color: var(--warn); }
+  .badge.comprador    { background: var(--accent-soft); color: var(--accent); }
+  .badge.pausado      { background: var(--danger-soft); color: var(--danger); }
+  .badge.ventana      { background: var(--neutral-soft); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .badge.tag          { background: var(--neutral-soft); color: var(--ink-2); font-weight: 500; }
+
+  /* ── Chat ── */
+  #chatPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0;
+  }
+  #chatEmpty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+  #chatHead {
+    padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  #chatHead .who { display: flex; flex-direction: column; }
+  #chatHead .who b { font-size: 14px; }
+  #chatHead .who span { font-size: 12px; color: var(--ink-2); }
+  #chatHead .actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  #chatHead .actions button {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+    border-radius: 8px; padding: 6px 10px; font-size: 12.5px;
+  }
+  #chatHead .actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #chatHead .actions button.danger  { color: var(--danger); border-color: var(--danger); }
+  #backBtn { display: none; border: none; background: none; font-size: 18px; color: var(--ink-2); }
+  @media (max-width: 800px) { #backBtn { display: block; } }
+  #tagsRow { padding: 6px 14px; display: flex; gap: 5px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  #tagsRow .badge.tag { cursor: pointer; }
+  #tagsRow .addTag { font-size: 11px; color: var(--accent); background: none; border: 1px dashed var(--accent); border-radius: 5px; padding: 1px 7px; }
+
+  #msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); }
+  .msg { max-width: 72%; padding: 7px 11px; border-radius: 12px; box-shadow: var(--shadow); white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-start; background: var(--bubble-in); border-bottom-left-radius: 4px; }
+  .msg.assistant { align-self: flex-end; background: var(--bubble-out); border-bottom-right-radius: 4px; }
+  .msg .ts { display: block; font-size: 10px; color: var(--ink-3); margin-top: 3px; text-align: right; }
+
+  #composer { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  #composer textarea {
+    flex: 1; resize: none; height: 44px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+  }
+  #composer button {
+    padding: 0 18px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 600;
+  }
+  #composer button:disabled { opacity: 0.5; cursor: default; }
+  #pausedNote { padding: 6px 14px; font-size: 12px; color: var(--warn); background: var(--warn-soft); display: none; }
+
+  #toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 60;
+  }
+
+  /* ── Tabs ── */
+  #tabs { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  #tabs button { border: none; background: none; color: var(--ink-2); padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+  #tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* ── Productos ── */
+  #productsMain {
+    display: none; flex: 1; grid-template-columns: 320px 1fr; gap: 12px;
+    padding: 0 20px 16px; min-height: 0;
+  }
+  #productsMain.visible { display: grid; }
+  @media (max-width: 800px) {
+    #productsMain { grid-template-columns: 1fr; }
+    #productEditorPane { display: none; }
+    #productsMain.editor-open #productListPane { display: none; }
+    #productsMain.editor-open #productEditorPane { display: flex; }
+  }
+
+  #productListPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0;
+  }
+  #productListTools { padding: 10px; border-bottom: 1px solid var(--border); }
+  #productListTools button {
+    width: 100%; padding: 9px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600;
+  }
+  #productList { overflow-y: auto; flex: 1; }
+  .pitem { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+  .pitem:hover { background: var(--surface-2); }
+  .pitem.selected { background: var(--accent-soft); }
+  .pitem .pname { font-weight: 600; }
+  .pitem .pmeta { font-size: 12px; color: var(--ink-2); }
+
+  #productEditorPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 18px;
+  }
+  #productEditorEmpty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+  #productForm { display: flex; flex-direction: column; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .field input[type=text], .field input[type=number], .field input[type=url], .field textarea {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); width: 100%;
+  }
+  .field textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .checkfield { display: flex; align-items: flex-start; gap: 8px; padding: 10px; background: var(--surface-2); border-radius: 8px; margin-bottom: 14px; }
+  .checkfield small { display: block; color: var(--ink-2); margin-top: 3px; font-weight: 400; }
+  .checkfield input { margin-top: 3px; }
+
+  .section-title { font-size: 13px; font-weight: 700; margin: 6px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .section-title button.add {
+    margin-left: auto; font-size: 12px; border: 1px dashed var(--accent); color: var(--accent);
+    background: none; border-radius: 6px; padding: 3px 9px;
+  }
+
+  .step-card {
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; background: var(--surface-2);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .step-card .step-head { display: flex; align-items: center; gap: 6px; }
+  .step-card select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+  .step-card .spacer { flex: 1; }
+  .step-card button.icon { border: none; background: none; color: var(--ink-3); font-size: 14px; padding: 2px 6px; }
+  .step-card button.icon:hover { color: var(--ink); }
+  .step-card button.icon.danger:hover { color: var(--danger); }
+  .step-card textarea, .step-card input[type=text] {
+    padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); width: 100%; font-family: inherit;
+  }
+  .media-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); flex-wrap: wrap; }
+  .media-row img.thumb, .media-row video.thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; }
+
+  .editor-actions {
+    display: flex; gap: 8px; margin-top: 10px; position: sticky; bottom: -18px;
+    background: var(--surface); padding: 10px 0 0;
+  }
+  .editor-actions button { padding: 9px 16px; border-radius: 8px; font-weight: 600; border: none; }
+  .editor-actions .save { background: var(--accent); color: #fff; }
+  .editor-actions .delete { background: var(--danger-soft); color: var(--danger); margin-left: auto; }
+  .editor-actions .cancel { background: var(--neutral-soft); color: var(--ink-2); }
+
+  /* ── Fuentes de conocimiento ── */
+  .source-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 6px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); font-size: 13px;
+  }
+  .source-item .stype { font-size: 13px; }
+  .source-item .sname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-item button { border: none; background: none; color: var(--ink-3); font-size: 14px; padding: 2px 6px; }
+  .source-item button:hover { color: var(--danger); }
+
+  /* ── Integraciones ── */
+  #integrationsMain { display: none; flex: 1; padding: 0 20px 16px; min-height: 0; overflow-y: auto; }
+  #integrationsMain.visible { display: block; }
+  #integrationsPane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; max-width: 640px; margin: 0 auto;
+  }
+  .hint { font-size: 12.5px; color: var(--ink-2); margin: -4px 0 12px; line-height: 1.5; }
+  .hint code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .int-status { font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .int-status.on { color: var(--accent); }
+  .int-status.off { color: var(--ink-3); }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="card" id="loginForm">
+    <h1>🔒 Panel de control</h1>
+    <p>Ingresa la contraseña configurada en <code>DASHBOARD_PASSWORD</code>.</p>
+    <input type="password" id="password" placeholder="Contraseña" autofocus />
+    <div class="error" id="loginError"></div>
+    <button type="submit">Entrar</button>
+  </form>
+</div>
+
+<div id="app">
+  <header>
+    <div>
+      <h1>Agente de WhatsApp</h1>
+      <div class="sub">Control de conversaciones</div>
+    </div>
+    <div id="tabs">
+      <button data-tab="chats" class="active">Conversaciones</button>
+      <button data-tab="products">Productos</button>
+      <button data-tab="integrations">Integraciones</button>
+    </div>
+    <div id="stats"></div>
+  </header>
+
+  <main id="main">
+    <section id="listPane">
+      <div id="listTools">
+        <input id="search" placeholder="Buscar por nombre, teléfono o etiqueta…" />
+        <div id="filters">
+          <button data-f="todos" class="active">Todos</button>
+          <button data-f="conversando">Conversando</button>
+          <button data-f="pago_pendiente">Pago pendiente</button>
+          <button data-f="comprador">Compradores</button>
+          <button data-f="pausado">Bot pausado</button>
+        </div>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section id="chatPane">
+      <div id="chatEmpty">Selecciona una conversación 👈</div>
+      <div id="chatHead" style="display:none">
+        <button id="backBtn" title="Volver">←</button>
+        <div class="who">
+          <b id="cName"></b>
+          <span id="cMeta"></span>
+        </div>
+        <div class="actions">
+          <select id="productSel" title="Producto asignado"></select>
+          <button id="pauseBtn"></button>
+          <button id="approveBtn" class="primary">✅ Aprobar pago</button>
+        </div>
+      </div>
+      <div id="tagsRow" style="display:none"></div>
+      <div id="pausedNote">🤖 Bot pausado: el agente no responde automáticamente. Tú llevas esta conversación.</div>
+      <div id="msgs" style="display:none"></div>
+      <form id="composer" style="display:none">
+        <textarea id="msgInput" placeholder="Escribe un mensaje como el negocio… (Enter para enviar)"></textarea>
+        <button type="submit" id="sendBtn">Enviar</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="productsMain">
+    <section id="productListPane">
+      <div id="productListTools"><button id="newProductBtn">+ Nuevo producto</button></div>
+      <div id="productList"></div>
+    </section>
+
+    <section id="productEditorPane">
+      <div id="productEditorEmpty">Selecciona un producto o crea uno nuevo 👈</div>
+      <form id="productForm" style="display:none">
+        <div class="field">
+          <label>Nombre del producto</label>
+          <input type="text" id="pf_nombre" required />
+        </div>
+        <div class="field">
+          <label>Palabras clave (separadas por coma — lo que el cliente escribe desde el anuncio)</label>
+          <input type="text" id="pf_keywords" placeholder="CURSO, INFO" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Precio (número)</label>
+            <input type="number" id="pf_precio" min="1" />
+          </div>
+          <div class="field">
+            <label>Precio en texto</label>
+            <input type="text" id="pf_precioTexto" placeholder="$49.900 COP" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Link de Google Drive (acceso al producto)</label>
+          <input type="url" id="pf_driveLink" placeholder="https://drive.google.com/..." />
+        </div>
+        <label class="checkfield">
+          <input type="checkbox" id="pf_ocultarPrecios" />
+          <span>Ocultar precios de la base de conocimiento
+            <small>Actívalo si el documento de referencia de este producto tiene precios o cifras internas que NO debes revelar en la conversación (el bot puede describir qué incluye, pero nunca esos números). Tiene un filtro técnico de respaldo, no depende solo de la instrucción.</small>
+          </span>
+        </label>
+
+        <div class="section-title">Complementos / Upsell (opcional)
+          <button type="button" class="add" id="addUpsellBtn">+ agregar complemento</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-2);margin:-4px 0 8px">
+          Productos adicionales que el cliente puede sumar por un valor extra. El bot los ofrece en la conversación, y al validar el comprobante entrega el link según el monto pagado (base, o base + complementos). Ej: base $24.100 → link base; base + Cotizador (+$11.000) = $35.100 → ambos links.
+        </div>
+        <div id="upsellSteps"></div>
+
+        <div class="section-title">Flujo inicial (mensajes de bienvenida)
+          <button type="button" class="add" id="addFlowStepBtn">+ agregar paso</button>
+        </div>
+        <div id="flowSteps"></div>
+
+        <div class="section-title">Base de conocimiento</div>
+        <div class="field">
+          <textarea id="pf_knowledge" rows="7" placeholder="Toda la información que el bot debe conocer sobre este producto: qué incluye, para quién es, preguntas frecuentes, garantías…"></textarea>
+        </div>
+
+        <div class="section-title">Archivos y links adicionales (PDF, Word, Excel, páginas web)</div>
+        <div id="sourcesNote" style="font-size:12.5px;color:var(--ink-3);margin-bottom:10px">Guarda el producto primero para poder agregar archivos o links.</div>
+        <div id="sourcesBlock" style="display:none">
+          <div id="sourcesList"></div>
+          <div class="media-row" style="margin:8px 0">
+            <input type="file" id="sourceFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.md" />
+          </div>
+          <div class="field-row">
+            <div class="field" style="flex:1">
+              <input type="text" id="sourceLinkInput" placeholder="https://tu-pagina-con-informacion.com" />
+            </div>
+            <button type="button" class="add" id="addSourceLinkBtn" style="align-self:center">+ agregar link</button>
+          </div>
+        </div>
+
+        <div class="section-title">Remarketing (seguimientos automáticos)
+          <button type="button" class="add" id="addRemarketingStepBtn">+ agregar paso</button>
+        </div>
+        <div id="remarketingSteps"></div>
+
+        <div class="editor-actions">
+          <button type="button" class="cancel" id="cancelProductBtn">Cancelar</button>
+          <button type="submit" class="save">Guardar producto</button>
+          <button type="button" class="delete" id="deleteProductBtn">Eliminar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="integrationsMain">
+    <section id="integrationsPane">
+      <h2 style="font-size:15px;margin-bottom:4px">Negocio y métodos de pago</h2>
+      <p class="hint">El bot envía estos métodos de pago al cliente, y usa el <b>titular de la cuenta</b> para validar que el comprobante tenga el destinatario correcto.</p>
+      <form id="paymentForm" style="margin-bottom:26px">
+        <div class="field-row">
+          <div class="field">
+            <label>Nombre del negocio</label>
+            <input type="text" id="bz_nombre" />
+          </div>
+          <div class="field">
+            <label>Tu nombre (vendedor)</label>
+            <input type="text" id="bz_vendedor" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Titular de la cuenta (el nombre que debe aparecer como destinatario en los comprobantes)</label>
+          <input type="text" id="bz_titular" placeholder="Cristian Escobar" />
+        </div>
+        <div class="section-title">Métodos de pago
+          <button type="button" class="add" id="addPayMethodBtn">+ agregar método</button>
+        </div>
+        <div id="payMethods"></div>
+        <div class="editor-actions">
+          <button type="submit" class="save">Guardar negocio y pagos</button>
+        </div>
+      </form>
+
+      <h2 style="font-size:15px;margin-bottom:4px">Integraciones</h2>
+      <p class="hint">Conecta o actualiza tus credenciales sin tocar Railway. Los campos de token/clave nunca muestran el valor completo por seguridad — solo indican si ya están configurados. Deja un campo en blanco para no cambiarlo.</p>
+      <form id="integrationsForm">
+        <div class="section-title">WhatsApp Cloud API (Meta)</div>
+        <div class="field">
+          <label>Token de acceso <span class="int-status" data-key="whatsappToken"></span></label>
+          <input type="password" id="int_whatsappToken" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Phone Number ID</label>
+          <input type="text" id="int_whatsappPhoneNumberId" />
+        </div>
+        <div class="field">
+          <button type="button" id="testWaBtn" style="align-self:flex-start;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);font-weight:600">🔌 Probar conexión de WhatsApp</button>
+          <div id="testWaResult" style="font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="field">
+          <label>Verify Token (el mismo que configuraste en Meta)</label>
+          <input type="text" id="int_whatsappVerifyToken" />
+        </div>
+        <div class="field">
+          <label>App Secret (opcional, valida la firma de los webhooks) <span class="int-status" data-key="whatsappAppSecret"></span></label>
+          <input type="password" id="int_whatsappAppSecret" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Atribución de anuncios (Meta Marketing API)</div>
+        <p class="hint">Opcional: con un token de permiso <code>ads_read</code>, el bot muestra el nombre real del anuncio/conjunto/campaña (no solo el ID) en tus reportes de ventas.</p>
+        <div class="field">
+          <label>Token de Marketing API <span class="int-status" data-key="metaAdsToken"></span></label>
+          <input type="password" id="int_metaAdsToken" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Meta Pixel / Conversions API</div>
+        <p class="hint">Opcional: envía el evento de compra de vuelta a Meta (con el <code>ctwa_clid</code> del anuncio) para que optimice tus campañas con ventas reales, no solo conversaciones.</p>
+        <div class="field">
+          <label>Pixel ID</label>
+          <input type="text" id="int_metaPixelId" />
+        </div>
+        <div class="field">
+          <label>Token de Conversions API <span class="int-status" data-key="metaConversionsToken"></span></label>
+          <input type="password" id="int_metaConversionsToken" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Google Sheets</div>
+        <div class="field">
+          <label>URL del Web App (Apps Script, termina en /exec)</label>
+          <input type="text" id="int_sheetsWebhookUrl" />
+        </div>
+        <div class="field">
+          <label>Clave secreta (la misma del código de Apps Script) <span class="int-status" data-key="sheetsSecret"></span></label>
+          <input type="password" id="int_sheetsSecret" placeholder="Dejar en blanco para no cambiar" autocomplete="off" />
+        </div>
+
+        <div class="section-title">Otros</div>
+        <div class="field">
+          <label>Tu WhatsApp (alertas de ventas y comprobantes)</label>
+          <input type="text" id="int_adminWhatsapp" placeholder="573001112233" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Modelo para la conversación</label>
+            <select id="int_claudeModelChat">
+              <option value="claude-haiku-4-5">Haiku 4.5 (económico)</option>
+              <option value="claude-sonnet-5">Sonnet 5 (intermedio)</option>
+              <option value="claude-opus-4-8">Opus 4.8 (máxima calidad)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Modelo para validar comprobantes</label>
+            <select id="int_claudeModelReceipts">
+              <option value="claude-opus-4-8">Opus 4.8 (recomendado)</option>
+              <option value="claude-sonnet-5">Sonnet 5</option>
+              <option value="claude-haiku-4-5">Haiku 4.5</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="editor-actions">
+          <button type="submit" class="save">Guardar integraciones</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let TOKEN = sessionStorage.getItem("dash_token") || "";
+let contacts = [];
+let selected = null;   // teléfono seleccionado
+let filter = "todos";
+let searchText = "";
+let products = [];
+let allProducts = [];      // catálogo completo para la pestaña Productos
+let editingProduct = null; // producto en edición (null = creando uno nuevo)
+let currentFlow = [];      // pasos del flujo inicial en edición
+let currentRemarketing = []; // pasos de remarketing en edición
+let currentUpsells = [];   // complementos (upsell) en edición
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.opacity = 1;
+  setTimeout(() => (t.style.opacity = 0), 2600);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch("/api" + path, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + TOKEN,
+      ...(opts.headers || {}),
+    },
+  });
+  if (res.status === 401) { showLogin("Contraseña incorrecta o sesión vencida"); throw new Error("401"); }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || ("HTTP " + res.status));
+  return body;
+}
+
+function showLogin(msg) {
+  $("login").style.display = "flex";
+  $("app").style.display = "none";
+  if (msg) $("loginError").textContent = msg;
+}
+
+async function tryEnter() {
+  try {
+    await api("/stats");
+    $("login").style.display = "none";
+    $("app").style.display = "flex";
+    products = await api("/products");
+    await refresh();
+    setInterval(refresh, 4000);
+  } catch (err) {
+    if (err.message !== "401") showLogin(err.message);
+  }
+}
+
+$("loginForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  TOKEN = $("password").value;
+  sessionStorage.setItem("dash_token", TOKEN);
+  $("loginError").textContent = "";
+  tryEnter();
+});
+
+/* ── refresco ── */
+async function refresh() {
+  const [stats, list] = await Promise.all([api("/stats"), api("/contacts")]);
+  renderStats(stats);
+  contacts = list;
+  renderList();
+  if (selected) renderChat(await api("/contacts/" + selected).catch(() => null));
+}
+
+function renderStats(s) {
+  const tiles = [
+    ["Contactos", s.total],
+    ["Conversando", s.conversando],
+    ["Pago pendiente", s.pagoPendiente],
+    ["Compradores", s.compradores],
+    ["Ventana 24h", s.ventanaAbierta],
+  ];
+  $("stats").innerHTML = tiles
+    .map(([lbl, num]) => `<div class="tile"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`)
+    .join("");
+}
+
+const STAGE_LABEL = {
+  nuevo: "Nuevo", conversando: "Conversando",
+  pago_pendiente: "Pago pendiente", comprador: "Comprador",
+};
+
+function fmtTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const today = new Date().toDateString() === d.toDateString();
+  return today
+    ? d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
+}
+
+function fmtWindow(ms) {
+  if (!ms) return "ventana cerrada";
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return `⏳ ${h}h ${m}m`;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function matchesFilter(c) {
+  if (filter === "pausado" && !c.botPaused) return false;
+  if (["conversando", "pago_pendiente", "comprador"].includes(filter) && c.stage !== filter) return false;
+  if (searchText) {
+    const hay = (c.name + " " + c.phone + " " + c.tags.join(" ")).toLowerCase();
+    if (!hay.includes(searchText)) return false;
+  }
+  return true;
+}
+
+function renderList() {
+  const rows = contacts.filter(matchesFilter).map((c) => `
+    <div class="item ${c.phone === selected ? "selected" : ""}" data-phone="${c.phone}">
+      <div class="row1">
+        <span class="name">${esc(c.name || "+" + c.phone)}</span>
+        <span class="time">${fmtTime(c.lastMessage?.ts)}</span>
+      </div>
+      <div class="preview">${c.lastMessage ? (c.lastMessage.role === "assistant" ? "↩︎ " : "") + esc(c.lastMessage.content) : "(sin mensajes)"}</div>
+      <div class="row3">
+        <span class="badge ${c.stage}">${STAGE_LABEL[c.stage] || c.stage}</span>
+        ${c.botPaused ? '<span class="badge pausado">⏸ bot pausado</span>' : ""}
+        ${c.stage !== "comprador" ? `<span class="badge ventana">${fmtWindow(c.windowMsLeft)}</span>` : ""}
+        ${c.productName ? `<span class="badge tag">${esc(c.productName)}</span>` : ""}
+      </div>
+    </div>`).join("");
+  $("list").innerHTML = rows || '<div style="padding:20px;color:var(--ink-3)">Sin resultados</div>';
+}
+
+$("list").addEventListener("click", async (e) => {
+  const item = e.target.closest(".item");
+  if (!item) return;
+  selected = item.dataset.phone;
+  $("main").classList.add("chat-open");
+  renderList();
+  renderChat(await api("/contacts/" + selected));
+});
+
+$("backBtn").addEventListener("click", () => {
+  $("main").classList.remove("chat-open");
+  selected = null;
+  renderList();
+});
+
+$("search").addEventListener("input", (e) => { searchText = e.target.value.toLowerCase(); renderList(); });
+$("filters").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  filter = e.target.dataset.f;
+  document.querySelectorAll("#filters button").forEach((b) => b.classList.toggle("active", b === e.target));
+  renderList();
+});
+
+/* ── chat ── */
+let lastRenderedKey = "";
+function renderChat(c) {
+  if (!c) return;
+  $("chatEmpty").style.display = "none";
+  $("chatHead").style.display = "flex";
+  $("tagsRow").style.display = "flex";
+  $("msgs").style.display = "flex";
+  $("composer").style.display = "flex";
+
+  $("cName").textContent = c.name || "+" + c.phone;
+  $("cMeta").textContent = `+${c.phone} · ${STAGE_LABEL[c.stage] || c.stage} · ${fmtWindow(c.windowMsLeft)}`;
+
+  $("productSel").innerHTML =
+    '<option value="">— sin producto —</option>' +
+    products.map((p) => `<option value="${p.id}" ${p.id === c.productId ? "selected" : ""}>${esc(p.nombre)}</option>`).join("");
+
+  $("pauseBtn").textContent = c.botPaused ? "▶️ Reanudar bot" : "⏸ Pausar bot";
+  $("pauseBtn").className = c.botPaused ? "" : "danger";
+  $("pauseBtn").onclick = async () => {
+    await api(`/contacts/${c.phone}/pause`, { method: "POST", body: JSON.stringify({ paused: !c.botPaused }) });
+    toast(c.botPaused ? "Bot reanudado" : "Bot pausado: tú llevas la conversación");
+    refresh();
+  };
+  $("pausedNote").style.display = c.botPaused ? "block" : "none";
+
+  $("approveBtn").style.display = c.stage === "comprador" ? "none" : "";
+  $("approveBtn").onclick = async () => {
+    if (!confirm(`¿Confirmar el pago de ${c.name || c.phone} y entregar el producto?`)) return;
+    try { await api(`/contacts/${c.phone}/approve`, { method: "POST" }); toast("Producto entregado ✅"); refresh(); }
+    catch (err) { toast(err.message); }
+  };
+
+  $("productSel").onchange = async (e) => {
+    await api(`/contacts/${c.phone}/product`, { method: "POST", body: JSON.stringify({ productId: e.target.value || null }) });
+    toast("Producto actualizado"); refresh();
+  };
+
+  $("tagsRow").innerHTML =
+    c.tags.map((t) => `<span class="badge tag" title="Clic para quitar" data-tag="${esc(t)}">${esc(t)} ✕</span>`).join("") +
+    '<button class="addTag">+ etiqueta</button>';
+  $("tagsRow").onclick = async (e) => {
+    if (e.target.classList.contains("addTag")) {
+      const tag = prompt("Nueva etiqueta:");
+      if (tag) { await api(`/contacts/${c.phone}/tags`, { method: "POST", body: JSON.stringify({ add: tag }) }); refresh(); }
+    } else if (e.target.dataset.tag) {
+      await api(`/contacts/${c.phone}/tags`, { method: "POST", body: JSON.stringify({ remove: e.target.dataset.tag }) });
+      refresh();
+    }
+  };
+
+  // Repinta mensajes solo si cambió algo (evita saltos de scroll)
+  const key = c.phone + ":" + c.history.length + ":" + (c.history[c.history.length - 1]?.ts || 0);
+  if (key !== lastRenderedKey) {
+    lastRenderedKey = key;
+    $("msgs").innerHTML = c.history
+      .map((m) => `<div class="msg ${m.role}">${esc(m.content)}<span class="ts">${fmtTime(m.ts)}</span></div>`)
+      .join("");
+    $("msgs").scrollTop = $("msgs").scrollHeight;
+  }
+}
+
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("msgInput").value.trim();
+  if (!text || !selected) return;
+  $("sendBtn").disabled = true;
+  try {
+    await api(`/contacts/${selected}/send`, { method: "POST", body: JSON.stringify({ text }) });
+    $("msgInput").value = "";
+    await refresh();
+  } catch (err) { toast("No se pudo enviar: " + err.message); }
+  $("sendBtn").disabled = false;
+});
+$("msgInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("composer").requestSubmit(); }
+});
+
+/* ── Pestañas ── */
+$("tabs").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  const tab = e.target.dataset.tab;
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b === e.target));
+
+  $("main").style.display = tab === "chats" ? "" : "none";
+  $("productsMain").classList.toggle("visible", tab === "products");
+  $("integrationsMain").classList.toggle("visible", tab === "integrations");
+
+  if (tab === "products") loadProductsFull();
+  else if (tab === "integrations") loadIntegrations();
+});
+
+/* ── Productos: lista ── */
+async function loadProductsFull() {
+  try {
+    allProducts = await api("/products/full");
+    renderProductList();
+  } catch (err) {
+    toast("Error cargando productos: " + err.message);
+  }
+}
+
+function renderProductList() {
+  $("productList").innerHTML =
+    allProducts
+      .map(
+        (p) => `
+    <div class="pitem ${editingProduct?.id === p.id ? "selected" : ""}" data-id="${p.id}">
+      <div class="pname">${esc(p.nombre)}</div>
+      <div class="pmeta">${esc(p.precioTexto)} · ${esc((p.keywords || []).join(", "))}</div>
+    </div>`,
+      )
+      .join("") || '<div style="padding:20px;color:var(--ink-3)">Sin productos aún. Crea el primero 👆</div>';
+}
+
+$("productList").addEventListener("click", (e) => {
+  const item = e.target.closest(".pitem");
+  if (!item) return;
+  const p = allProducts.find((x) => x.id === item.dataset.id);
+  if (p) openProductEditor(p);
+});
+
+$("newProductBtn").addEventListener("click", () => openProductEditor(null));
+
+/* ── Productos: editor ── */
+function normalizeStepForEdit(step) {
+  if (typeof step === "string") return { type: "text", text: step };
+  return { ...step };
+}
+
+function openProductEditor(p) {
+  editingProduct = p;
+  $("productEditorEmpty").style.display = "none";
+  $("productForm").style.display = "flex";
+  $("productsMain").classList.add("editor-open");
+
+  $("pf_nombre").value = p?.nombre || "";
+  $("pf_keywords").value = (p?.keywords || []).join(", ");
+  $("pf_precio").value = p?.precio || "";
+  $("pf_precioTexto").value = p?.precioTexto || "";
+  $("pf_driveLink").value = p?.driveLink || "";
+  $("pf_ocultarPrecios").checked = !!p?.ocultarPreciosReferencia;
+  $("deleteProductBtn").style.display = p ? "" : "none";
+
+  currentFlow = (p?.flujoInicio || []).map(normalizeStepForEdit);
+  currentRemarketing = (p?.remarketing || []).map((s) => ({ ...s }));
+  currentUpsells = (p?.upsells || []).map((u) => ({ ...u }));
+  renderFlowSteps();
+  renderRemarketingSteps();
+  renderUpsells();
+
+  if (p) {
+    $("pf_knowledge").value = "Cargando…";
+    api(`/products/${p.id}/knowledge`)
+      .then((r) => { $("pf_knowledge").value = r.content || ""; })
+      .catch(() => { $("pf_knowledge").value = ""; });
+  } else {
+    $("pf_knowledge").value = "";
+  }
+
+  toggleSourcesUI(!!p);
+  if (p) loadSources(p.id);
+
+  renderProductList();
+}
+
+function closeProductEditor() {
+  $("productForm").style.display = "none";
+  $("productEditorEmpty").style.display = "flex";
+  $("productsMain").classList.remove("editor-open");
+  editingProduct = null;
+  renderProductList();
+}
+
+$("cancelProductBtn").addEventListener("click", closeProductEditor);
+
+/* ── Complementos / Upsell ── */
+function renderUpsells() {
+  const base = Number($("pf_precio").value) || 0;
+  $("upsellSteps").innerHTML =
+    currentUpsells
+      .map((u, i) => {
+        const total = base + (Number(u.precio) || 0);
+        return `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <input type="text" class="up-nombre" style="flex:1" value="${esc(u.nombre || "")}" placeholder="Nombre del complemento (ej: Cotizador de obra)" />
+        <button type="button" class="icon danger up-remove" title="Eliminar">✕</button>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Precio adicional (número)</label>
+          <input type="number" class="up-precio" min="1" value="${u.precio ?? ""}" placeholder="11000" />
+        </div>
+        <div class="field">
+          <label>Total a pagar si lo lleva</label>
+          <input type="text" value="$${total.toLocaleString("es-CO")}" disabled style="opacity:.7" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Link de Google Drive de ESTE complemento</label>
+        <input type="text" class="up-link" value="${esc(u.driveLink || "")}" placeholder="https://drive.google.com/..." />
+      </div>
+    </div>`;
+      })
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:4px 0 8px">Sin complementos. El producto se vende solo a su precio base.</div>';
+}
+
+$("addUpsellBtn").addEventListener("click", () => {
+  currentUpsells.push({ nombre: "", precio: "", driveLink: "" });
+  renderUpsells();
+});
+
+$("upsellSteps").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  if (e.target.classList.contains("up-remove")) {
+    currentUpsells.splice(Number(card.dataset.i), 1);
+    renderUpsells();
+  }
+});
+
+$("upsellSteps").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("up-nombre")) currentUpsells[i].nombre = e.target.value;
+  else if (e.target.classList.contains("up-precio")) { currentUpsells[i].precio = e.target.value; renderUpsells(); }
+  else if (e.target.classList.contains("up-link")) currentUpsells[i].driveLink = e.target.value;
+});
+
+// Recalcula los totales de complementos cuando cambia el precio base
+$("pf_precio").addEventListener("input", () => { if (currentUpsells.length) renderUpsells(); });
+
+/* ── Fuentes de conocimiento: archivos y links ── */
+function toggleSourcesUI(hasProduct) {
+  $("sourcesNote").style.display = hasProduct ? "none" : "block";
+  $("sourcesBlock").style.display = hasProduct ? "block" : "none";
+}
+
+async function loadSources(productId) {
+  try {
+    const list = await api(`/products/${productId}/sources`);
+    renderSources(list);
+  } catch {
+    renderSources([]);
+  }
+}
+
+function renderSources(list) {
+  $("sourcesList").innerHTML =
+    list
+      .map(
+        (s) => `
+    <div class="source-item" data-id="${s.id}">
+      <span class="stype">${s.type === "file" ? "📄" : "🔗"}</span>
+      <span class="sname" title="${esc(s.name)}">${esc(s.name)}</span>
+      <button type="button" class="source-remove" title="Eliminar">✕</button>
+    </div>`,
+      )
+      .join("") || '<div style="color:var(--ink-3);font-size:12.5px;padding:4px 0">Sin archivos ni links agregados.</div>';
+}
+
+$("sourcesList").addEventListener("click", async (e) => {
+  if (!e.target.classList.contains("source-remove") || !editingProduct) return;
+  const item = e.target.closest(".source-item");
+  try {
+    await api(`/products/${editingProduct.id}/sources/${item.dataset.id}`, { method: "DELETE" });
+    toast("Fuente eliminada");
+    loadSources(editingProduct.id);
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+$("sourceFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file || !editingProduct) return;
+  toast("Subiendo y procesando archivo…");
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`/api/products/${editingProduct.id}/sources/file`, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + TOKEN },
+      body: form,
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Error subiendo archivo");
+    toast("Archivo agregado ✅");
+    loadSources(editingProduct.id);
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+  e.target.value = "";
+});
+
+$("addSourceLinkBtn").addEventListener("click", async () => {
+  const url = $("sourceLinkInput").value.trim();
+  if (!url || !editingProduct) return;
+  toast("Leyendo el link…");
+  try {
+    await api(`/products/${editingProduct.id}/sources/link`, { method: "POST", body: JSON.stringify({ url }) });
+    $("sourceLinkInput").value = "";
+    toast("Link agregado ✅");
+    loadSources(editingProduct.id);
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+/* ── Flujo inicial: render + edición ── */
+function renderFlowSteps() {
+  $("flowSteps").innerHTML =
+    currentFlow
+      .map((step, i) => {
+        if (step.type === "text") {
+          return `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <select class="step-type">
+          <option value="text" selected>Texto</option>
+          <option value="image">Imagen</option>
+          <option value="video">Video</option>
+        </select>
+        <span class="spacer"></span>
+        <button type="button" class="icon step-up" title="Subir">↑</button>
+        <button type="button" class="icon step-down" title="Bajar">↓</button>
+        <button type="button" class="icon danger step-remove" title="Eliminar">✕</button>
+      </div>
+      <textarea class="step-text" placeholder="Usa {negocio}, {producto}, {precio}">${esc(step.text || "")}</textarea>
+    </div>`;
+        }
+        const kindLabel = step.type === "image" ? "Imagen" : "Video";
+        const thumb = step.previewUrl
+          ? step.type === "image"
+            ? `<img class="thumb" src="${step.previewUrl}">`
+            : `<video class="thumb" src="${step.previewUrl}"></video>`
+          : "";
+        return `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <select class="step-type">
+          <option value="text">Texto</option>
+          <option value="image" ${step.type === "image" ? "selected" : ""}>Imagen</option>
+          <option value="video" ${step.type === "video" ? "selected" : ""}>Video</option>
+        </select>
+        <span class="spacer"></span>
+        <button type="button" class="icon step-up" title="Subir">↑</button>
+        <button type="button" class="icon step-down" title="Bajar">↓</button>
+        <button type="button" class="icon danger step-remove" title="Eliminar">✕</button>
+      </div>
+      <div class="media-row">
+        <input type="file" class="step-file" accept="${step.type === "image" ? "image/*" : "video/*"}" />
+        ${thumb}
+        <span>${step.mediaId ? "✅ " + kindLabel + " subido" : "⏳ falta subir el archivo"}</span>
+      </div>
+      <input type="text" class="step-caption" placeholder="Texto que acompaña (opcional). Usa {negocio}, {producto}, {precio}" value="${esc(step.caption || "")}" />
+    </div>`;
+      })
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:8px 0">Sin pasos aún — agrega el primer mensaje de bienvenida.</div>';
+}
+
+$("addFlowStepBtn").addEventListener("click", () => {
+  currentFlow.push({ type: "text", text: "" });
+  renderFlowSteps();
+});
+
+$("flowSteps").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("step-remove")) {
+    currentFlow.splice(i, 1);
+    renderFlowSteps();
+  } else if (e.target.classList.contains("step-up") && i > 0) {
+    [currentFlow[i - 1], currentFlow[i]] = [currentFlow[i], currentFlow[i - 1]];
+    renderFlowSteps();
+  } else if (e.target.classList.contains("step-down") && i < currentFlow.length - 1) {
+    [currentFlow[i + 1], currentFlow[i]] = [currentFlow[i], currentFlow[i + 1]];
+    renderFlowSteps();
+  }
+});
+
+$("flowSteps").addEventListener("change", async (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+
+  if (e.target.classList.contains("step-type")) {
+    currentFlow[i] = { type: e.target.value, text: "" };
+    renderFlowSteps();
+    return;
+  }
+
+  if (e.target.classList.contains("step-file")) {
+    const file = e.target.files[0];
+    if (!file) return;
+    currentFlow[i].previewUrl = URL.createObjectURL(file);
+    renderFlowSteps();
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + TOKEN },
+        body: form,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error subiendo archivo");
+      currentFlow[i].mediaId = json.mediaId;
+      toast("Archivo subido ✅");
+    } catch (err) {
+      toast("Error subiendo archivo: " + err.message);
+    }
+    renderFlowSteps();
+  }
+});
+
+$("flowSteps").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("step-text")) currentFlow[i].text = e.target.value;
+  else if (e.target.classList.contains("step-caption")) currentFlow[i].caption = e.target.value;
+});
+
+/* ── Remarketing: render + edición ── */
+function renderRemarketingSteps() {
+  $("remarketingSteps").innerHTML =
+    currentRemarketing
+      .map(
+        (step, i) => `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <input type="text" class="rm-horas" style="width:60px" value="${step.horas ?? ""}" placeholder="hrs" />
+        <span style="font-size:12px;color:var(--ink-2)">horas después del último mensaje del cliente</span>
+        <span class="spacer"></span>
+        <button type="button" class="icon danger rm-remove" title="Eliminar">✕</button>
+      </div>
+      <textarea class="rm-mensaje" placeholder="Mensaje de seguimiento. Usa {negocio}, {producto}, {precio}">${esc(step.mensaje || "")}</textarea>
+      <div class="field-row">
+        <div class="field">
+          <label>Solo si tiene la etiqueta (opcional)</label>
+          <input type="text" class="rm-req" value="${esc(step.etiquetaRequerida || "")}" placeholder="ej: interesado:curso-x" />
+        </div>
+        <div class="field">
+          <label>Solo si NO tiene la etiqueta (opcional)</label>
+          <input type="text" class="rm-exc" value="${esc(step.etiquetaExcluida || "")}" placeholder="ej: comprador" />
+        </div>
+      </div>
+    </div>`,
+      )
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:8px 0">Sin seguimientos configurados para este producto (usará el remarketing general).</div>';
+}
+
+$("addRemarketingStepBtn").addEventListener("click", () => {
+  currentRemarketing.push({ horas: 5, mensaje: "" });
+  renderRemarketingSteps();
+});
+
+$("remarketingSteps").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("rm-remove")) {
+    currentRemarketing.splice(i, 1);
+    renderRemarketingSteps();
+  }
+});
+
+$("remarketingSteps").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("rm-horas")) currentRemarketing[i].horas = Number(e.target.value) || 0;
+  else if (e.target.classList.contains("rm-mensaje")) currentRemarketing[i].mensaje = e.target.value;
+  else if (e.target.classList.contains("rm-req")) currentRemarketing[i].etiquetaRequerida = e.target.value.trim();
+  else if (e.target.classList.contains("rm-exc")) currentRemarketing[i].etiquetaExcluida = e.target.value.trim();
+});
+
+/* ── Guardar / eliminar producto ── */
+$("productForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const pendingMedia = currentFlow.find((s) => (s.type === "image" || s.type === "video") && !s.mediaId);
+  if (pendingMedia) {
+    toast("Falta terminar de subir un archivo de imagen/video del flujo");
+    return;
+  }
+
+  const body = {
+    nombre: $("pf_nombre").value.trim(),
+    keywords: $("pf_keywords").value.split(",").map((s) => s.trim()).filter(Boolean),
+    precio: Number($("pf_precio").value),
+    precioTexto: $("pf_precioTexto").value.trim(),
+    driveLink: $("pf_driveLink").value.trim(),
+    ocultarPreciosReferencia: $("pf_ocultarPrecios").checked,
+    upsells: currentUpsells
+      .filter((u) => String(u.nombre || "").trim())
+      .map((u) => ({ nombre: String(u.nombre).trim(), precio: Number(u.precio), driveLink: String(u.driveLink || "").trim() })),
+    flujoInicio: currentFlow.map((s) =>
+      s.type === "text"
+        ? { type: "text", text: s.text || "" }
+        : { type: s.type, mediaId: s.mediaId, caption: s.caption || "" },
+    ),
+    remarketing: currentRemarketing.map((s) => ({
+      horas: Number(s.horas) || 0,
+      mensaje: s.mensaje || "",
+      ...(s.etiquetaRequerida ? { etiquetaRequerida: s.etiquetaRequerida } : {}),
+      ...(s.etiquetaExcluida ? { etiquetaExcluida: s.etiquetaExcluida } : {}),
+    })),
+  };
+
+  try {
+    const saved = editingProduct
+      ? await api(`/products/${editingProduct.id}`, { method: "PUT", body: JSON.stringify(body) })
+      : await api("/products", { method: "POST", body: JSON.stringify(body) });
+
+    await api(`/products/${saved.product.id}/knowledge`, {
+      method: "PUT",
+      body: JSON.stringify({ content: $("pf_knowledge").value }),
+    });
+
+    toast("Producto guardado ✅");
+    editingProduct = saved.product;
+    toggleSourcesUI(true);
+    loadSources(saved.product.id);
+    await loadProductsFull();
+    products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+$("deleteProductBtn").addEventListener("click", async () => {
+  if (!editingProduct) return;
+  if (!confirm(`¿Eliminar "${editingProduct.nombre}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    await api(`/products/${editingProduct.id}`, { method: "DELETE" });
+    toast("Producto eliminado");
+    closeProductEditor();
+    await loadProductsFull();
+    products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+/* ── Negocio y métodos de pago ── */
+let currentPayMethods = [];
+
+function renderPayMethods() {
+  $("payMethods").innerHTML =
+    currentPayMethods
+      .map(
+        (m, i) => `
+    <div class="step-card" data-i="${i}">
+      <div class="step-head">
+        <input type="text" class="pm-nombre" style="width:140px" value="${esc(m.nombre || "")}" placeholder="Nequi" />
+        <input type="text" class="pm-datos" style="flex:1" value="${esc(m.datos || "")}" placeholder="310 000 0000 — a nombre de..." />
+        <button type="button" class="icon danger pm-remove" title="Eliminar">✕</button>
+      </div>
+    </div>`,
+      )
+      .join("") ||
+    '<div style="color:var(--ink-3);font-size:13px;padding:4px 0 8px">Sin métodos de pago. Agrega al menos uno.</div>';
+}
+
+$("addPayMethodBtn").addEventListener("click", () => {
+  currentPayMethods.push({ nombre: "", datos: "" });
+  renderPayMethods();
+});
+
+$("payMethods").addEventListener("click", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  if (e.target.classList.contains("pm-remove")) {
+    currentPayMethods.splice(Number(card.dataset.i), 1);
+    renderPayMethods();
+  }
+});
+
+$("payMethods").addEventListener("input", (e) => {
+  const card = e.target.closest(".step-card");
+  if (!card) return;
+  const i = Number(card.dataset.i);
+  if (e.target.classList.contains("pm-nombre")) currentPayMethods[i].nombre = e.target.value;
+  else if (e.target.classList.contains("pm-datos")) currentPayMethods[i].datos = e.target.value;
+});
+
+async function loadBusiness() {
+  try {
+    const s = await api("/settings");
+    $("bz_nombre").value = s.negocio?.nombre || "";
+    $("bz_vendedor").value = s.negocio?.vendedor || "";
+    $("bz_titular").value = s.titularCuenta || "";
+    currentPayMethods = (s.metodosPago || []).map((m) => ({ ...m }));
+    renderPayMethods();
+  } catch (err) {
+    toast("Error cargando negocio: " + err.message);
+  }
+}
+
+$("paymentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const metodos = currentPayMethods
+    .filter((m) => String(m.nombre || "").trim() && String(m.datos || "").trim())
+    .map((m) => ({ nombre: m.nombre.trim(), datos: m.datos.trim() }));
+  try {
+    await api("/settings", {
+      method: "PUT",
+      body: JSON.stringify({
+        negocio: { nombre: $("bz_nombre").value.trim(), vendedor: $("bz_vendedor").value.trim() },
+        titularCuenta: $("bz_titular").value.trim(),
+        metodosPago: metodos,
+      }),
+    });
+    toast("Negocio y pagos guardados ✅");
+    products = await api("/products");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+/* ── Prueba de conexión de WhatsApp ── */
+$("testWaBtn").addEventListener("click", async () => {
+  const box = $("testWaResult");
+  box.style.color = "var(--ink-2)";
+  box.textContent = "Probando…";
+  try {
+    const r = await api("/integrations/test-whatsapp");
+    if (r.ok) {
+      box.style.color = "var(--accent)";
+      box.textContent = `✅ Conexión correcta. Calidad del número: ${r.quality} · Límite: ${r.limitTier}. Ya puedes subir imágenes y videos.`;
+    } else {
+      box.style.color = "var(--danger)";
+      box.textContent = "❌ " + r.error;
+    }
+  } catch (err) {
+    box.style.color = "var(--danger)";
+    box.textContent = "❌ " + err.message;
+  }
+});
+
+/* ── Integraciones ── */
+async function loadIntegrations() {
+  await loadBusiness();
+  try {
+    const s = await api("/integrations");
+    $("int_whatsappPhoneNumberId").value = s.whatsappPhoneNumberId?.value || "";
+    $("int_whatsappVerifyToken").value = s.whatsappVerifyToken?.value || "";
+    $("int_metaPixelId").value = s.metaPixelId?.value || "";
+    $("int_sheetsWebhookUrl").value = s.sheetsWebhookUrl?.value || "";
+    $("int_adminWhatsapp").value = s.adminWhatsapp?.value || "";
+    $("int_claudeModelChat").value = s.claudeModelChat?.value || "claude-haiku-4-5";
+    $("int_claudeModelReceipts").value = s.claudeModelReceipts?.value || "claude-opus-4-8";
+
+    // Los campos secretos nunca se rellenan — solo se muestra su estado
+    ["whatsappToken", "whatsappAppSecret", "metaAdsToken", "metaConversionsToken", "sheetsSecret"].forEach((key) => {
+      const badge = document.querySelector(`.int-status[data-key="${key}"]`);
+      if (!badge) return;
+      const info = s[key];
+      badge.textContent = info?.configured ? `✅ configurado (${info.preview})` : "○ sin configurar";
+      badge.className = "int-status " + (info?.configured ? "on" : "off");
+    });
+  } catch (err) {
+    toast("Error cargando integraciones: " + err.message);
+  }
+}
+
+$("integrationsForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const patch = {
+    whatsappPhoneNumberId: $("int_whatsappPhoneNumberId").value.trim(),
+    whatsappVerifyToken: $("int_whatsappVerifyToken").value.trim(),
+    metaPixelId: $("int_metaPixelId").value.trim(),
+    sheetsWebhookUrl: $("int_sheetsWebhookUrl").value.trim(),
+    adminWhatsapp: $("int_adminWhatsapp").value.trim(),
+    claudeModelChat: $("int_claudeModelChat").value,
+    claudeModelReceipts: $("int_claudeModelReceipts").value,
+  };
+  // Los secretos solo se envían si el usuario escribió algo nuevo
+  [
+    ["whatsappToken", "int_whatsappToken"],
+    ["whatsappAppSecret", "int_whatsappAppSecret"],
+    ["metaAdsToken", "int_metaAdsToken"],
+    ["metaConversionsToken", "int_metaConversionsToken"],
+    ["sheetsSecret", "int_sheetsSecret"],
+  ].forEach(([key, id]) => {
+    const val = $(id).value.trim();
+    if (val) patch[key] = val;
+  });
+
+  try {
+    await api("/integrations", { method: "PUT", body: JSON.stringify(patch) });
+    ["int_whatsappToken", "int_whatsappAppSecret", "int_metaAdsToken", "int_metaConversionsToken", "int_sheetsSecret"].forEach(
+      (id) => ($(id).value = ""),
+    );
+    toast("Integraciones guardadas ✅");
+    await loadIntegrations();
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+});
+
+if (TOKEN) tryEnter(); else showLogin("");
+</script>
+</body>
+</html>

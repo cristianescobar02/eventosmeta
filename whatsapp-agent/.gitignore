@@ -1,0 +1,5 @@
+node_modules/
+.env
+# Datos generados en vivo (contactos, ajustes, productos y conocimiento
+# editados desde el panel). No se suben: son estado del servidor, no del repo.
+data/
