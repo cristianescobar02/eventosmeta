@@ -17,7 +17,7 @@ import {
 import { getSettingsForDisplay, updateSettings } from "./settings.js";
 import { extractFromFile, extractFromLink } from "./extract.js";
 import { allContacts, getContact, pushHistory, addTag, save } from "./db.js";
-import { sendText, uploadMedia } from "./whatsapp.js";
+import { sendText, uploadMedia, getPhoneNumberQuality } from "./whatsapp.js";
 import { deliverProduct } from "./router.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
@@ -31,6 +31,21 @@ function slugify(text) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+// Traduce errores crudos de la API de Meta a algo entendible para el usuario.
+function friendlyWhatsappError(msg) {
+  const m = String(msg || "");
+  if (/\b190\b|OAuthException|Authentication|access token|Session has expired/i.test(m)) {
+    return "El token de WhatsApp no es válido o caducó. Genera un token PERMANENTE (caducidad: Nunca) desde tu Usuario del sistema, con los permisos whatsapp_business_messaging y whatsapp_business_management, y pégalo arriba en 'Token de acceso'. Verifica también que tu cuenta de WhatsApp (WABA) esté asignada a ese usuario del sistema.";
+  }
+  if (/\b100\b|Unsupported (get|post) request|does not exist|Tried accessing nonexisting field/i.test(m)) {
+    return "El 'Phone Number ID' parece incorrecto. Cópialo de nuevo desde el Panel de WhatsApp en Meta (es un número largo, distinto de tu número de teléfono) y pégalo arriba.";
+  }
+  if (/\b10\b|permission|no autorizado|not have|scope/i.test(m)) {
+    return "El token no tiene los permisos necesarios o la cuenta de WhatsApp no está asignada al Usuario del sistema. Revisa que el token tenga whatsapp_business_messaging y whatsapp_business_management y que la WABA esté agregada como activo.";
+  }
+  return "WhatsApp: " + m;
 }
 
 function uniqueProductId(base) {
@@ -320,7 +335,17 @@ export function mountDashboard(app) {
       const mediaId = await uploadMedia(req.file.buffer, mime, req.file.originalname);
       res.json({ ok: true, mediaId, kind, mimeType: mime });
     } catch (err) {
-      res.status(502).json({ error: `WhatsApp: ${err.message}` });
+      res.status(502).json({ error: friendlyWhatsappError(err.message) });
+    }
+  });
+
+  // Prueba de conexión con WhatsApp: dice si el token y el número funcionan
+  api.get("/integrations/test-whatsapp", async (_req, res) => {
+    try {
+      const q = await getPhoneNumberQuality();
+      res.json({ ok: true, quality: q.quality, limitTier: q.limitTier });
+    } catch (err) {
+      res.json({ ok: false, error: friendlyWhatsappError(err.message) });
     }
   });
 

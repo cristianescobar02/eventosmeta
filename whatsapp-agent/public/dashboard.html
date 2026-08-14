@@ -485,6 +485,10 @@
           <input type="text" id="int_whatsappPhoneNumberId" />
         </div>
         <div class="field">
+          <button type="button" id="testWaBtn" style="align-self:flex-start;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);font-weight:600">🔌 Probar conexión de WhatsApp</button>
+          <div id="testWaResult" style="font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="field">
           <label>Verify Token (el mismo que configuraste en Meta)</label>
           <input type="text" id="int_whatsappVerifyToken" />
         </div>
@@ -1340,6 +1344,26 @@ $("paymentForm").addEventListener("submit", async (e) => {
     products = await api("/products");
   } catch (err) {
     toast("Error: " + err.message);
+  }
+});
+
+/* ── Prueba de conexión de WhatsApp ── */
+$("testWaBtn").addEventListener("click", async () => {
+  const box = $("testWaResult");
+  box.style.color = "var(--ink-2)";
+  box.textContent = "Probando…";
+  try {
+    const r = await api("/integrations/test-whatsapp");
+    if (r.ok) {
+      box.style.color = "var(--accent)";
+      box.textContent = `✅ Conexión correcta. Calidad del número: ${r.quality} · Límite: ${r.limitTier}. Ya puedes subir imágenes y videos.`;
+    } else {
+      box.style.color = "var(--danger)";
+      box.textContent = "❌ " + r.error;
+    }
+  } catch (err) {
+    box.style.color = "var(--danger)";
+    box.textContent = "❌ " + err.message;
   }
 });
 
